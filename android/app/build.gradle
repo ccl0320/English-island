@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.ccl0320.englishisland'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.ccl0320.englishisland'
+        minSdk 24
+        targetSdk 34
+        versionCode (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+        versionName "1.0.${System.getenv('GITHUB_RUN_NUMBER') ?: '0'}"
+    }
+
+    // A fixed key (not secret, classroom use) so each new APK installs over the old one
+    // and keeps the child's progress.
+    signingConfigs {
+        classroom {
+            storeFile file('classroom.keystore')
+            storePassword 'android'
+            keyAlias 'classroom'
+            keyPassword 'android'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.classroom
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+}

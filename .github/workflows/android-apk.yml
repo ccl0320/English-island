@@ -1,0 +1,60 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Bundle the game into the app (three.js included, so it plays offline)
+        run: |
+          W=android/app/src/main/assets/www
+          mkdir -p "$W"
+          cp -r index.html img audio "$W/"
+          curl -fsSL https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js -o "$W/three.min.js"
+          sed -i 's#https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js#three.min.js#' "$W/index.html"
+          grep -q 'src="three.min.js"' "$W/index.html"
+
+      - name: Build the APK
+        working-directory: android
+        run: gradle assembleRelease --no-daemon
+
+      - run: cp android/app/build/outputs/apk/release/app-release.apk English-Island.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: English-Island-apk
+          path: English-Island.apk
+
+      - name: Publish the APK as a download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: English Island (Android app)
+          body: |
+            Download English-Island.apk on the Android phone or tablet, open it, and allow "install unknown apps" when asked.
+            This APK is rebuilt automatically every time the game is updated.
+          files: English-Island.apk
+          make_latest: true
+          overwrite_files: true
