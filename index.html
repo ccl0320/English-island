@@ -288,7 +288,7 @@ const ZONES=[
   gate:[{q:'Is Grandpa in the living room?',pic:'👴 🛋️',hint:'Grandpa · living room',a:'Yes, he is.'},{q:'Is Grandma upstairs?',pic:'👵 ⬇️🪜',hint:'Grandma is downstairs',a:"No, she isn't."},{q:'Is Dad in the dining room?',pic:'👨 🍽️',hint:'Dad · dining room',a:'Yes, he is.'}],
   outro:"Creak! The Grey Door opens and the Red Crystal flies back to you. Then Pip shouts: Where's my cap?!"},
  {zh:'The Messy Bedroom',en:'Unit 1 · in / on / under',color:'#F08C2E',crystal:'the Orange Crystal',
-  words:[['bed','🛏️','床',1],['door','🚪','門',1],['floor','🟫','地板',0],['chair','🪑','椅子',0],['closet','🗄️','衣櫥',0],['mirror','🪞','鏡子',0],['stairs','🪜','樓梯',0],['bookcase','📚','書櫃',0]],
+  words:[['bed','🛏️','床',1],['door','🚪','門',1],['floor','🟫','地板',0],['chair','🪑','椅子',0],['closet','🗄️','衣櫥',0],['mirror','🪞','鏡子',0],['stairs','🪜','樓梯',0],['bookcase','📚','書櫃',0],['wall','🧱','牆壁',0]],
   intro:["Where's my cap?","The fog hid Pip's cap! Beat the furniture monsters, then tell Pip where the cap is."],
   keeper:'Sleepy Closet',
   gate:[{q:"Where's my cap?",pic:'🧢 🛏️',hint:'under',a:"It's under the bed."},{q:"Where's my cap?",pic:'🧢 🗄️',hint:'in',a:"It's in the closet."},{q:"Where's my cap?",pic:'🧢 🦉',hint:'on',a:"It's on your head."}],
@@ -600,7 +600,8 @@ function unitMap(ui){
 
 // ---------- island arena: walk around, touch monsters ----------
 let P=null;
-function pickWords(z){const full=shuffle(z.words.filter(w=>w[3])),part=shuffle(z.words.filter(w=>!w[3]));
+function freshFirst(a){const x=shuffle(a);return[...x.filter(w=>!S.dex.includes(w[0])),...x.filter(w=>S.dex.includes(w[0]))]}
+function pickWords(z){const full=freshFirst(z.words.filter(w=>w[3])),part=freshFirst(z.words.filter(w=>!w[3]));
  const picks=full.slice(0,3);for(const w of part){if(picks.length>=5)break;picks.push(w)}return shuffle(picks)}
 const TEX={};
 function charSprite(name,h,flipBase){
@@ -789,7 +790,7 @@ float g=pow(max(sin(vW.x*1.7+uTime*2.1)*sin(vW.z*1.9-uTime*1.6),0.0),26.0);c+=g*
  // characters
  const hero=makeHero();hero.position.set(pathX(PATH.z0),.3,PATH.z0);sc.add(hero);
  const own=pickWords(z),all=z.words;
- const mons=PATH.stations.map((sz,i)=>{const hp=PATH.hp[i],w=own[i%own.length];const more=shuffle(all.filter(x=>x[0]!==w[0])).slice(0,hp-1);
+ const mons=PATH.stations.map((sz,i)=>{const hp=PATH.hp[i],w=own[i%own.length];const more=freshFirst(all.filter(x=>x[0]!==w[0]&&!own.includes(x))).slice(0,hp-1);
   const m=makeMonster(zi,hp>2,false);m.position.set(pathX(sz),.3,sz);m.userData.home=sz;m.userData.ph=i*1.7;sc.add(m);
   return {m,w,list:[w,...more],hp,alive:true,dying:-1}});
  const keeper=makeMonster(zi,true,true);keeper.position.set(pathX(PATH.boss),.3,PATH.boss);sc.add(keeper);
@@ -1054,44 +1055,76 @@ const SENT=[
   {q:'Where is Grandma?',pic:'👵 🍳',hint:'廚房',a:'She is in the kitchen.',key:'kitchen'},
   {q:'Where is Dad?',pic:'👨 🛏️',hint:'臥室',a:'He is in the bedroom.',key:'bedroom'},
   {q:'Where is Mom?',pic:'👩 🛁',hint:'浴室',a:'She is in the bathroom.',key:'bathroom'},
-  {q:'Where is the cat?',pic:'🐱 🌳',hint:'院子',a:'It is in the yard.',key:'yard'}],
+  {q:'Where is the cat?',pic:'🐱 🌳',hint:'院子',a:'It is in the yard.',key:'yard'},
+  {q:"Where's the bathroom?",pic:'🛁 ⬆️',hint:'樓上',a:"It's upstairs.",key:'upstairs'},
+  {q:"Where's the kitchen?",pic:'🍳 ⬇️',hint:'樓下',a:"It's downstairs.",key:'downstairs'},
+  {q:'Is Grandma in the kitchen?',pic:'👵 🍳 ✔️',hint:'Yes',a:'Yes, she is.'},
+  {q:'Is Dad upstairs?',pic:'👨 ⬆️ ❌',hint:'No',a:"No, he isn't."}],
  [{q:"Where's the ball?",pic:'⚽ ⬇️ 🛏️',hint:'under',a:"It's under the bed.",key:'bed'},
   {q:"Where's the cat?",pic:'🐱 ⬆️ 🪑',hint:'on',a:"It's on the chair.",key:'chair'},
   {q:"Where's the teddy?",pic:'🧸 🗄️',hint:'in',a:"It's in the closet.",key:'closet'},
   {q:"Where's the book?",pic:'📕 🟫',hint:'on',a:"It's on the floor.",key:'floor'},
-  {q:"Where's the dog?",pic:'🐶 ⬇️ 🪜',hint:'under',a:"It's under the stairs.",key:'stairs'}],
+  {q:"Where's the dog?",pic:'🐶 ⬇️ 🪜',hint:'under',a:"It's under the stairs.",key:'stairs'},
+  {q:'Is my cap under the bed?',pic:'🧢 ❌ 🛏️',hint:'not under',a:"It isn't under the bed.",key:'bed'},
+  {q:'Is my cap in the closet?',pic:'🧢 ❌ 🗄️',hint:'not in',a:"It isn't in the closet.",key:'closet'},
+  {q:'What color is the wall?',pic:'🧱 💛',hint:'yellow',a:'The wall is yellow.',key:'wall'},
+  {q:'What color is the floor?',pic:'🟫',hint:'brown',a:'The floor is brown.',key:'floor'},
+  {q:"What's in your bedroom?",pic:'🪞 📚',hint:'mirror · bookcase',a:"There's a mirror and a bookcase.",key:'bookcase'},
+  {q:'Where is the plane now?',pic:'✈️ 🚪',hint:'on',a:"Now it's on the door.",key:'door'}],
  [{q:"What's in the room?",pic:'🛋️',hint:'one',a:"There's a sofa.",key:'sofa'},
   {q:"What's in the room?",pic:'🍽️',hint:'one',a:"There's a table.",key:'table'},
   {q:"What's on the wall?",pic:'🖼️',hint:'one',a:"There's a picture.",key:'picture'},
   {q:"What's on the sofa?",pic:'🛋️ 🛋️',hint:'many',a:'There are cushions.',key:'cushions'},
-  {q:"What's in the room?",pic:'🪑',hint:'one',a:"There's a chair.",key:'chair'}],
+  {q:"What's in the room?",pic:'🪑',hint:'one',a:"There's a chair.",key:'chair'},
+  {q:"What's your home like?",pic:'🛋️ 🏠',hint:'客廳',a:"There's a living room."},
+  {q:"What's your home like?",pic:'🪑 🪑 🍽️',hint:'two chairs · a table',a:'There are two chairs and a table.',key:'table'},
+  {q:"What's on your wall?",pic:'🪞 🧱',hint:'mirror',a:"There's a mirror on my wall."}],
  [{q:'Where is Mom?',pic:'👩 🍳',hint:'廚房',a:'She is in the kitchen.',key:'kitchen'},
   {q:"Where's the cake?",pic:'🎂 🛋️',hint:'on',a:"It's on the sofa.",key:'sofa'},
   {q:"Where's the gift?",pic:'🎁 ⬇️ 🛏️',hint:'under',a:"It's under the bed.",key:'bed'},
   {q:'Where is Dad?',pic:'👨 🛁',hint:'浴室',a:'He is in the bathroom.',key:'bathroom'},
-  {q:"What's on the wall?",pic:'🪞',hint:'one',a:"There's a mirror.",key:'mirror'}],
+  {q:"What's on the wall?",pic:'🪞',hint:'one',a:"There's a mirror.",key:'mirror'},
+  {q:'Is Frank under the bed?',pic:'👦 ❌ 🛏️',hint:'No',a:"No, he isn't."},
+  {q:'Is Mom in the bathroom?',pic:'👩 🛁 ✔️',hint:'Yes',a:'Yes, she is.'},
+  {q:'It is your birthday!',pic:'🎂 7️⃣',hint:'seven',a:"I'm seven today!"}],
  [{q:'What is it?',pic:'🐄',hint:'乳牛',a:"It's a cow.",key:'cow'},
   {q:'What is it?',pic:'🐐',hint:'山羊',a:"It's a goat.",key:'goat'},
   {q:'What is it?',pic:'🫏',hint:'驢子',a:"It's a donkey.",key:'donkey'},
   {q:'What is it?',pic:'🐔',hint:'雞',a:"It's a chicken.",key:'chicken'},
-  {q:'What do you like?',pic:'🐴 ❤️',hint:'馬',a:'I like the horse.',key:'horse'}],
+  {q:'What do you like?',pic:'🐴 ❤️',hint:'馬',a:'I like the horse.',key:'horse'},
+  {q:'Do you like cows?',pic:'🐄 ❤️',hint:'I like it',a:'Yes, I do.'},
+  {q:'Do you like donkeys?',pic:'🫏 ✖️',hint:"I don't like it",a:"No, I don't."}],
  [{q:'What are they?',pic:'🐐 🐐',hint:'山羊們',a:"They're goats.",key:'goats'},
   {q:'What are they?',pic:'🐴 🐴',hint:'馬兒們',a:"They're horses.",key:'horses'},
   {q:'What are they?',pic:'🐭 🐭',hint:'老鼠們',a:"They're mice.",key:'mice'},
   {q:'What are they?',pic:'🐔 🐔',hint:'雞群',a:"They're chickens.",key:'chickens'},
-  {q:'What are they?',pic:'🫏 🫏',hint:'驢子們',a:"They're donkeys.",key:'donkeys'}],
+  {q:'What are they?',pic:'🫏 🫏',hint:'驢子們',a:"They're donkeys.",key:'donkeys'},
+  {q:'Are they chickens?',pic:'🐐 🐐',hint:'goats',a:"No, they aren't. They're goats.",key:'goats'},
+  {q:'Are they horses?',pic:'🐄 🐄',hint:'cows',a:"No, they aren't. They're cows.",key:'cows'},
+  {q:'Are they birds?',pic:'🐦 🐦',hint:'Yes',a:'Yes, they are.'}],
  [{q:'Look!',pic:'🐄',hint:'大的',a:"It's a big cow.",key:'big'},
   {q:'Look!',pic:'🐭',hint:'小的',a:"It's a small mouse.",key:'small'},
   {q:'Look!',pic:'🐴 🟤',hint:'髒的',a:"It's a dirty horse.",key:'dirty'},
   {q:'Look!',pic:'🐑 🐑 🫧',hint:'乾淨的',a:"They're clean sheep.",key:'clean'},
   {q:'Look!',pic:'🐦 🤫',hint:'安靜的',a:"It's a quiet bird.",key:'quiet'},
-  {q:'Look!',pic:'🐔 📢',hint:'吵鬧的',a:"It's a noisy chicken.",key:'noisy'}],
+  {q:'Look!',pic:'🐔 📢',hint:'吵鬧的',a:"It's a noisy chicken.",key:'noisy'},
+  {q:'Look!',pic:'🫏 🫏 📢',hint:'吵鬧的',a:"They're noisy donkeys!",key:'noisy'},
+  {q:'Here are some cows.',pic:'🐄 🐄',hint:'大的',a:"They're big cows.",key:'big'},
+  {q:'Here are some mice.',pic:'🐭 🐭 🤫',hint:'安靜的',a:"They're quiet mice.",key:'quiet'},
+  {q:'Here are some goats.',pic:'🐐 🐐 🫧',hint:'乾淨的',a:"They're clean goats.",key:'clean'},
+  {q:'Look at that chicken!',pic:'🐔 🟤',hint:'髒的',a:'Look at that dirty chicken!',key:'dirty'},
+  {q:'Look at that chicken!',pic:'🐥',hint:'小的',a:'Look at that small chicken!',key:'small'}],
  [{q:'What do you like?',pic:'🍑',hint:'桃子',a:'I like peaches.',key:'peaches'},
   {q:'What grows here?',pic:'🍋 🌳',hint:'檸檬',a:'Lemons grow here.',key:'lemons'},
   {q:'What do you like?',pic:'🍎',hint:'蘋果',a:'I like apples.',key:'apples'},
   {q:'What grows here?',pic:'🍌 🌳',hint:'香蕉',a:'Bananas grow here.',key:'bananas'},
   {q:'What grows here?',pic:'🍍 🌳',hint:'鳳梨',a:'Pineapples grow here.',key:'pineapples'},
-  {q:'What do you like?',pic:'🍉',hint:'西瓜',a:'I like watermelons.',key:'watermelons'}]
+  {q:'What do you like?',pic:'🍉',hint:'西瓜',a:'I like watermelons.',key:'watermelons'},
+  {q:'What grows here?',pic:'🍎 🍐',hint:'apples · pears',a:'Apples and pears grow here.',key:'apples'},
+  {q:'What grows here?',pic:'🍓',hint:'草莓',a:'Strawberries grow here.'},
+  {q:'Which farm animals do you like?',pic:'🐭 🤫',hint:'quiet',a:"I like mice. They're quiet."},
+  {q:'What does Henrietta say?',pic:'🐔 🩶',hint:'not colorful · not big',a:"I'm not colorful, and I'm not big!"},
+  {q:'What fruit do you like?',pic:'🍌',hint:'香蕉',a:'I like bananas!',key:'bananas'}]
 ];
 // the end mark (. ? !) of every sentence is its own card and its own box
 function tokens(ans){const out=[];ans.split(' ').forEach(t=>{const m=t.match(/^(.+?)([.?!]+)$/);if(m){out.push(m[1],m[2])}else out.push(t)});return out}
@@ -1106,8 +1139,9 @@ function dexHtml(){return S.dex.map(w=>{const pic=dexPic(w);return `<button clas
 function dexTotal(){const set=new Set();ZONES.forEach(z=>z.words.forEach(w=>set.add(w[0])));return set.size}
 function addMiss(t,zi,v){S.miss=S.miss||[];const k=t+'|'+zi+'|'+v;MISSN++;COMBO=0;updCombo();if(P&&P.run)P.run.miss++;if(!S.miss.includes(k)){S.miss.unshift(k);S.miss=S.miss.slice(0,40);save()}}
 function dropMiss(t,zi,v){const k=t+'|'+zi+'|'+v;if(S.miss&&S.miss.includes(k)){S.miss=S.miss.filter(x=>x!==k);save()}}
-function pickSent(zi){const L=SENT[zi]||[];if(!L.length)return ZONES[zi].gate[0];const used=P?(P.usedS=P.usedS||[]):[];
- let c=L.filter(x=>!used.includes(x.a));if(!c.length){used.length=0;c=L}const g=c[Math.floor(Math.random()*c.length)];used.push(g.a);return g}
+function pickSent(zi){const L=SENT[zi]||[];if(!L.length)return ZONES[zi].gate[0];const used=P?(P.usedS=P.usedS||[]):[];const seen=S.seenS=S.seenS||[];
+ let c=L.filter(x=>!used.includes(x.a)&&!seen.includes(zi+'|'+x.a));if(!c.length)c=L.filter(x=>!used.includes(x.a));if(!c.length){used.length=0;c=L}
+ const g=c[Math.floor(Math.random()*c.length)];used.push(g.a);if(!seen.includes(zi+'|'+g.a)){seen.push(zi+'|'+g.a);save()}return g}
 function chestFx(){const b=document.querySelector('#foe .fbody');if(b)b.innerHTML='<div class="chestfoe open">💰</div>'}
 
 function sentQ(zi,g,o){
