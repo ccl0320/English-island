@@ -797,9 +797,13 @@ function foeLoop(ts){requestAnimationFrame(foeLoop);const el=document.getElement
   if(BF.name!==n||!BF.mon){if(BF.mon)BF.sc.remove(BF.mon);BF.mon=modelMonster(n,1.5);BF.name=n;if(BF.mon){BF.mon.rotation.y=-.5;BF.sc.add(BF.mon)}}
   if(BF.mon){mColor(BF.mon.userData.model,0);mPlay(BF.mon.userData.model,'idle')}BF.wash=-1;BF.w=0}
  const w=el.clientWidth,h=el.clientHeight;if(!w||!h||!BF.mon)return;
- if(w!==BF.w||h!==BF.h){BF.w=w;BF.h=h;BF.r.setSize(w,h,false);BF.cam.aspect=w/h;BF.cam.updateProjectionMatrix()}
+ if(w!==BF.w||h!==BF.h){BF.w=w;BF.h=h;BF.r.setSize(w,h,false);BF.cam.aspect=w/h;BF.cam.updateProjectionMatrix();fitFoe()}
  const md=BF.mon.userData.model;md.mixer.update(RM?0:dt);if(BF.wash>=0){BF.wash+=dt*1.6;mColor(md,BF.wash)}
  BF.r.render(BF.sc,BF.cam)}
+// keep the whole monster in view in a narrow (phone) or wide box: distance from its size, the box shape and the lens
+function fitFoe(){const T=THREE,c=BF.cam,b=new T.Box3().setFromObject(BF.mon),sz=b.getSize(new T.Vector3()),mid=b.getCenter(new T.Vector3());
+ const r=Math.max(sz.x,sz.z)*.56+.06,hh=sz.y*.5+.14,t=Math.tan(c.fov*Math.PI/360),d=Math.max(hh/t,r/(t*c.aspect))+r*.3;
+ c.position.set(mid.x-d*.12,mid.y+.3,mid.z+d);c.lookAt(mid.x,mid.y+.12,mid.z)}
 function foe3d(){return document.getElementById('foe3d')&&BF.mon?BF.mon.userData.model:null}
 
 // ---------- Melissa-style clay scenery ----------
