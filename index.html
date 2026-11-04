@@ -229,6 +229,26 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pip);outline-of
 .gamec{background:var(--paper);border:0;border-radius:16px;padding:16px;box-shadow:0 3px 0 var(--fog-deep);text-align:center;font-family:var(--display)}
 .gamec span{display:block;font-size:3rem}
 .gamec small{display:block;font-family:inherit;color:var(--fog-deep);font-weight:600}
+.tug{display:flex;align-items:center;gap:10px;margin:6px 0}
+.tug b{font-family:var(--display);min-width:80px;text-align:center}
+.tug .rope{flex:1;position:relative;height:14px;border-radius:999px;background:repeating-linear-gradient(45deg,#c9a46a 0 8px,#b08a50 8px 16px)}
+.tug .rope i{position:absolute;top:50%;transform:translate(-50%,-50%);font-style:normal;font-size:1.8rem;transition:left .5s}
+.tug .rope::after{content:'';position:absolute;left:50%;top:-8px;bottom:-8px;border-left:3px dashed #5B4B8A}
+.turn{text-align:center;font-family:var(--display);font-size:1.3rem;padding:6px 12px;border-radius:999px;color:#fff;margin:0 auto;width:max-content}
+.turn.p0{background:#3E8ED0}.turn.p1{background:#E46A5E}
+.pieces{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:8px 0}
+.pieces .tile.wd{width:auto;padding:0 14px;font-family:var(--word)}
+.built{min-height:56px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;font:700 1.5rem var(--word,inherit)}
+.built .slot{width:auto;min-width:38px;padding:0 6px}
+.rep table{width:100%;border-collapse:collapse;margin:6px 0 14px;font-size:.95rem}
+.rep th,.rep td{border-bottom:1px solid #d6dbe0;padding:6px 8px;text-align:left}
+.rep th{background:#EEF1F4;font-family:var(--display)}
+.rep h3{font-family:var(--display);margin:14px 0 4px}
+.rep .kpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.rep .kpi div{background:#EEF1F4;border-radius:12px;padding:8px 10px}
+.rep .kpi b{display:block;font-size:1.4rem;font-family:var(--display)}
+.rep .muted{color:var(--fog-deep)}
+@media print{body{background:#fff}.hud,.noprint{display:none!important}.panel{box-shadow:none}}
 .book{display:flex;flex-direction:column;gap:10px;align-items:center;position:relative}
 .bkframe{position:relative;width:100%;aspect-ratio:3/2;border-radius:18px;overflow:hidden;background:#e9dcc8;touch-action:pan-y}
 .bkpic{position:absolute;inset:0;background:#cfe9f7 center/cover no-repeat}
@@ -675,11 +695,11 @@ function map(){
  const open=UNITS.filter(u=>u.subs.length),allDone=open.every(unitDone);
  app.innerHTML=hud()+`<div class="story">${PIP}<div class="bubble" id="say3d">${allDone?`<span class="en">Great job, ${esc(S.name)}!</span>You cleared all open islands and collected ${S.dex.length} words! More islands are coming soon.`:`<span class="en">Where to, ${esc(S.name)}?</span>Tap the island with the orange arrow! Each island has 4 stages. Foggy islands are locked.`}</div></div>
  <div class="sea" id="sea"><div class="labels" id="labels"></div><div class="tip">Drag to turn · pinch to zoom</div>${zoomHtml()}</div>
- <div class="row">${S.cleared>0?`<button class="btn" id="camp">🏕️ Practice Camp${campCount()?` (${campCount()} to review)`:''}</button>`:''}<button class="btn soft" id="gamesb">🎮 Games</button><button class="btn soft" id="shopb">🛍️ Shop</button><button class="btn soft" id="houseb">🌈 Rainbow House</button><button class="btn soft" id="shelf">📚 Storybooks</button><button class="btn soft" id="vset">Voice settings${AZ&&AZ.key?' (Azure on)':''}</button></div>
+ <div class="row">${S.cleared>0?`<button class="btn" id="camp">🏕️ Practice Camp${campCount()?` (${campCount()} to review)`:''}</button>`:''}<button class="btn soft" id="gamesb">🎮 Games</button><button class="btn soft" id="shopb">🛍️ Shop</button><button class="btn soft" id="houseb">🌈 Rainbow House</button><button class="btn soft" id="shelf">📚 Storybooks</button><button class="btn soft" id="vset">Voice settings${AZ&&AZ.key?' (Azure on)':''}</button><button class="btn soft" id="repb">📊 Report</button></div>
  ${S.name?dailyHtml():''}
  ${S.dex.length?`<div class="panel"><h2 style="font-size:1.2rem;margin-bottom:8px">Rainbow Book: ${S.dex.length} / ${dexTotal()} words <small style="font-weight:600;color:var(--fog-deep)">Tap a card to hear it</small></h2><div class="dex">${dexHtml()}</div></div>`:''}`;
  document.getElementById('vset').onclick=()=>voiceSettings(map);document.getElementById('shelf').onclick=()=>shelf(map);const cb=document.getElementById('camp');if(cb)cb.onclick=camp;
- document.getElementById('shopb').onclick=()=>shop(map);document.getElementById('gamesb').onclick=()=>games(map);document.getElementById('houseb').onclick=()=>house(map);
+ document.getElementById('shopb').onclick=()=>shop(map);document.getElementById('gamesb').onclick=()=>games(map);document.getElementById('repb').onclick=()=>report(map);document.getElementById('houseb').onclick=()=>house(map);
  const dc=document.getElementById('dclaim');if(dc)dc.onclick=()=>{const d=daily();if(d.claimed||!dailyDone(d))return;d.claimed=true;addCoins(60);speak('Hooray! Sixty coins!');map()};
  mount(document.getElementById('sea'));rebuild();
 }
@@ -1246,7 +1266,7 @@ function comboHit(clean){if(!clean){COMBO=0;updCombo();return}COMBO++;dly('combo
 function dexPic(w){for(const z of ZONES){const f=z.words.find(x=>x[0]===w);if(f)return f[1]}return '⭐'}
 function dexHtml(){return S.dex.map(w=>{const pic=dexPic(w);return `<button class="dexc" data-w="${esc(w)}" onclick="speak(this.dataset.w)"><b>${pic.startsWith('#')?`<span class="sw" style="background:${pic}"></span>`:pic}</b>${esc(w)}</button>`}).join('')}
 function dexTotal(){const set=new Set();ZONES.forEach(z=>z.words.forEach(w=>set.add(w[0])));return set.size}
-function addMiss(t,zi,v){S.miss=S.miss||[];const k=t+'|'+zi+'|'+v;MISSN++;COMBO=0;updCombo();if(P&&P.run)P.run.miss++;if(!S.miss.includes(k)){S.miss.unshift(k);S.miss=S.miss.slice(0,40);save()}}
+function addMiss(t,zi,v){S.miss=S.miss||[];const k=t+'|'+zi+'|'+v;S.missLog=S.missLog||{};S.missLog[k]=(S.missLog[k]||0)+1;MISSN++;COMBO=0;updCombo();if(P&&P.run)P.run.miss++;if(!S.miss.includes(k)){S.miss.unshift(k);S.miss=S.miss.slice(0,40);save()}}
 function dropMiss(t,zi,v){const k=t+'|'+zi+'|'+v;if(S.miss&&S.miss.includes(k)){S.miss=S.miss.filter(x=>x!==k);save()}}
 function pickSent(zi){const L=SENT[zi]||[];if(!L.length)return ZONES[zi].gate[0];const used=P?(P.usedS=P.usedS||[]):[];const seen=S.seenS=S.seenS||[];
  let c=L.filter(x=>!used.includes(x.a)&&!seen.includes(zi+'|'+x.a));if(!c.length)c=L.filter(x=>!used.includes(x.a));if(!c.length){used.length=0;c=L}
@@ -1468,7 +1488,7 @@ function house(back){const seen=new Set();
 const DAILY=[{k:'words',n:8,t:'Spell 8 words',zh:'拼出 8 個單字',i:'✏️'},{k:'sents',n:4,t:'Write 4 sentences',zh:'完成 4 個句子',i:'📝'},{k:'combo',n:3,t:'Get a combo of 3',zh:'連續答對 3 題',i:'🔥'},
  {k:'chest',n:1,t:'Open a treasure chest',zh:'打開 1 個寶箱',i:'🎁'},{k:'camp',n:3,t:'Practice 3 times at camp',zh:'在練習營練習 3 題',i:'🏕️'},{k:'boss',n:1,t:'Beat a boss',zh:'打敗 1 個魔王',i:'👑'},{k:'book',n:1,t:'Read a storybook again',zh:'從書架重讀 1 本故事書',i:'📚'}];
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()};
-function daily(){const t=today();if(!S.daily||S.daily.date!==t){let h=7;for(const c of t)h=(h*31+c.charCodeAt(0))>>>0;
+function daily(){const t=today();S.days=S.days||[];if(!S.days.includes(t)){S.days.push(t);save()}if(!S.daily||S.daily.date!==t){let h=7;for(const c of t)h=(h*31+c.charCodeAt(0))>>>0;
   const pool=DAILY.map((x,i)=>i).filter(i=>(DAILY[i].k!=='camp'||S.cleared>0)&&(DAILY[i].k!=='book'||(S.books||[]).length>1));const pick=[];
   while(pick.length<3&&pool.length){h=(h*1103515245+12345)>>>0;pick.push(pool.splice((h>>>8)%pool.length,1)[0])}
   S.daily={date:t,tasks:pick,c:{},claimed:false};save()}return S.daily}
@@ -1496,9 +1516,10 @@ function gameWords(single){const done=Math.max(1,Math.min(S.cleared,ZONES.length
 function games(back){
  app.innerHTML=hud()+`<div class="panel"><h2 style="font-size:1.5rem;margin-bottom:10px">🎮 Mini Games</h2><div class="games">
   <button class="gamec" id="gfish"><span>🎣</span>Word Fishing<small>Listen and catch the right word!</small></button>
-  <button class="gamec" id="grace"><span>🏎️</span>Letter Race<small>Spell fast! How many words in 45 seconds?</small></button></div>
+  <button class="gamec" id="grace"><span>🏎️</span>Letter Race<small>Spell fast! How many words in 45 seconds?</small></button>
+  <button class="gamec" id="gduel"><span>👫</span>Two Players<small>Take turns. Pull the rope to your side!</small></button></div>
   <div class="row"><button class="btn soft" id="gback">Back to map</button></div></div>`;
- document.getElementById('gfish').onclick=()=>fishing(()=>games(back));document.getElementById('grace').onclick=()=>race(()=>games(back));document.getElementById('gback').onclick=back||map}
+ document.getElementById('gfish').onclick=()=>fishing(()=>games(back));document.getElementById('grace').onclick=()=>race(()=>games(back));document.getElementById('gduel').onclick=()=>duelSetup(()=>games(back));document.getElementById('gback').onclick=back||map}
 function gameEnd(title,score,total,again,back){const c=score*2;if(c)addCoins(c);
  app.innerHTML=hud()+`<div class="panel" style="text-align:center"><h2 style="font-size:1.6rem">${title}</h2><p style="font-size:2.4rem;margin:10px 0">⭐ ${score}${total?' / '+total:''}</p><p>+${c} coins</p>
   <div class="row"><button class="btn" id="gagain">Play again</button><button class="btn soft" id="gb">Back</button></div></div>`;
@@ -1532,6 +1553,61 @@ function race(back){const pool=gameWords(true);let score=0,left=45,word=null,pos
     if(pos>=L.length){score++;document.getElementById('car').style.left=Math.min(92,6+score/goal*86)+'%';speak(word[0]);setTimeout(()=>{if(document.getElementById('rtime'))nextWord()},450)}}
    else{t.classList.remove('wrong');void t.offsetWidth;t.classList.add('wrong')}})};
  nextWord()}
+
+// two players on one device: take turns, a tug of war
+function duelSetup(back){const nm=(S.duel||['Player 1','Player 2']);
+ app.innerHTML=hud()+`<div class="panel" style="text-align:center"><h2 style="font-size:1.5rem">👫 Two Players</h2><p>Take turns on one tablet. Spell words and build sentences. Pull the rope to your side!</p>
+  <div class="row" style="margin:12px 0"><label>🔵 <input id="n0" value="${esc(nm[0])}" maxlength="12" style="font-size:1.1rem;padding:6px;border-radius:10px;border:2px solid #3E8ED0;width:9em"></label><label>🔴 <input id="n1" value="${esc(nm[1])}" maxlength="12" style="font-size:1.1rem;padding:6px;border-radius:10px;border:2px solid #E46A5E;width:9em"></label></div>
+  <div class="row"><button class="btn" id="dgo">Start!</button><button class="btn soft" id="dback">Back</button></div></div>`;
+ document.getElementById('dback').onclick=back;
+ document.getElementById('dgo').onclick=()=>{const a=document.getElementById('n0').value.trim()||'Player 1',b=document.getElementById('n1').value.trim()||'Player 2';S.duel=[a,b];save();duel([a,b],back)}}
+function duel(names,back){const words=gameWords(true),done=Math.max(1,Math.min(S.cleared,ZONES.length));const sents=[];for(let zi=0;zi<done;zi++)(SENT[zi]||[]).forEach(g=>sents.push(g));
+ const ROUNDS=6;let turn=0;const pts=[0,0];
+ const next=()=>{if(turn>=ROUNDS*2)return duelEnd();const pl=turn%2,round=Math.floor(turn/2),isSent=round%2===1&&sents.length;
+  let item,pieces,label,pic,gloss;
+  if(isSent){const g=pk(sents);item=nameIn(g.a);pieces=tokens(item);label=g.q;pic=g.pic||'';gloss=g.hint||''}
+  else{const w=pk(words);item=w[0];pieces=[...w[0]];label='Spell the word!';pic=w[1];gloss=w[2]}
+  const order=shuffle(pieces.map((p,i)=>({p,i})));let pos=0,mist=0;
+  const ropeL=Math.max(8,Math.min(92,50+(pts[1]-pts[0])*7));
+  app.innerHTML=hud()+`<div class="panel"><div class="tug"><b style="color:#3E8ED0">🔵 ${esc(names[0])} ${pts[0]}</b><div class="rope"><i style="left:${ropeL}%">🎀</i></div><b style="color:#E46A5E">${pts[1]} ${esc(names[1])} 🔴</b></div>
+   <div class="turn p${pl}">${esc(names[pl])}'s turn · Round ${round+1} / ${ROUNDS}</div>
+   <div class="npcpic">${pic}<small>${esc(gloss)}</small></div><div class="q" style="text-align:center">${esc(label)}</div>
+   <div class="built" id="built">${pieces.map(p=>`<span class="slot${isMark(p)?' pc':''}"></span>`).join('')}</div>
+   <div class="pieces">${order.map((o,k)=>`<button class="tile${isSent?' wd':''}" data-k="${k}">${esc(o.p)}</button>`).join('')}</div>
+   <div class="hint" id="hint">${isSent?'Tap the cards in order. The end mark is a card too!':'Tap the letters in order.'}</div>
+   <div class="row"><button class="say" id="say">Listen</button><button class="btn soft" id="dq">Stop</button></div></div>`;
+  app.dataset.duel=pieces.join('|');speak(isSent?label:item);
+  const hint=document.getElementById('hint');document.getElementById('say').onclick=()=>speak(isSent?label:item);document.getElementById('dq').onclick=back;
+  app.querySelectorAll('.pieces .tile').forEach(b=>b.onclick=()=>{if(b.classList.contains('used'))return;const o=order[+b.dataset.k];
+   if(o.p===pieces[pos]){b.classList.add('used');const sl=app.querySelectorAll('#built .slot')[pos];sl.textContent=o.p;sl.classList.add('filled');pos++;if(!isMark(o.p))speak(o.p.replace(/,/g,''),1);
+    if(pos>=pieces.length){const g=mist===0?2:1;pts[pl]+=g;speak(item);hint.innerHTML=`<span style="color:var(--good)">${esc(names[pl])} +${g}! ${mist?'':'Perfect!'}</span>`;
+     app.querySelectorAll('.pieces .tile').forEach(x=>x.disabled=true);turn++;setTimeout(next,1500)}}
+   else{mist++;b.classList.remove('wrong');void b.offsetWidth;b.classList.add('wrong');hint.textContent='Oops! Try another one.'}})};
+ const duelEnd=()=>{const w=pts[0]===pts[1]?-1:pts[0]>pts[1]?0:1;
+  app.innerHTML=hud()+`<div class="panel" style="text-align:center"><h2 style="font-size:1.7rem">${w<0?"It's a tie! 🤝":'🏆 '+esc(names[w])+' wins!'}</h2>
+   <p style="font-size:1.6rem;margin:10px 0">🔵 ${pts[0]} : ${pts[1]} 🔴</p><p>Good game! Both players get 10 coins.</p>
+   <div class="row"><button class="btn" id="dagain">Play again</button><button class="btn soft" id="db">Back</button></div></div>`;
+  addCoins(10);speak(w<0?"It's a tie! Good game!":names[w]+' wins! Good game!');document.getElementById('dagain').onclick=()=>duel(names,back);document.getElementById('db').onclick=back};
+ next()}
+
+// ---------- teacher report ----------
+function report(back){const N=ZONES.length,done=Math.min(S.cleared,N),miss=S.missLog||{},open=new Set(S.miss||[]),seen=S.seenS||[];
+ const stars=Object.values(S.stars||{}).reduce((a,b)=>a+b,0);
+ const rows=ZONES.map((z,zi)=>{const ws=[...new Set(z.words.map(w=>w[0]))],got=ws.filter(w=>S.dex.includes(w)).length,sl=(SENT[zi]||[]).length,ss=seen.filter(k=>k.startsWith(zi+'|')).length;
+  return `<tr><td>${zi+1}. ${esc(z.zh)}</td><td>${zi<done?'★'.repeat((S.stars||{})[zi]||0)||'✓':'<span class="muted">未開始</span>'}</td><td>${got} / ${ws.length}</td><td>${ss} / ${sl}</td></tr>`}).join('');
+ const top=t=>Object.entries(miss).filter(([k])=>k.startsWith(t+'|')).sort((a,b)=>b[1]-a[1]).slice(0,12);
+ const mrow=([k,n])=>{const [t,zi,...v]=k.split('|');return `<tr><td>${esc(v.join('|'))}</td><td>${+zi+1}. ${esc(ZONES[+zi].zh)}</td><td>${n}</td><td>${open.has(k)?'⚠️ 還在練習營':'✅ 已練過'}</td></tr>`};
+ const tw=top('w'),ts=top('s');
+ const unseen=[];for(let zi=0;zi<done;zi++)ZONES[zi].words.forEach(w=>{if(!S.dex.includes(w[0])&&!unseen.includes(w[0]))unseen.push(w[0])});
+ app.innerHTML=hud()+`<div class="panel rep"><h2 style="font-size:1.5rem">📊 老師報表 · ${esc(S.name)}</h2><p class="muted">${new Date().toLocaleDateString('zh-TW')} · 資料只存在這台裝置</p>
+  <div class="kpi"><div>完成關卡<b>${done} / ${N}</b></div><div>星星<b>${stars} / ${N*3}</b></div><div>學會單字<b>${S.dex.length} / ${dexTotal()}</b></div><div>練過句子<b>${seen.length} / ${SENT.reduce((a,l)=>a+l.length,0)}</b></div><div>練習營待複習<b>${campCount()}</b></div><div>遊玩天數<b>${(S.days||[]).length}</b></div><div>日記頁數<b>${(S.diary||[]).length} / ${DIARY.length}</b></div><div>朋友<b>💛 ${friendN()}</b></div></div>
+  <h3>各關卡進度</h3><table><tr><th>關卡</th><th>星星</th><th>單字</th><th>句子（出現過）</th></tr>${rows}</table>
+  <h3>最常拼錯的單字</h3>${tw.length?`<table><tr><th>單字</th><th>關卡</th><th>錯誤次數</th><th>狀態</th></tr>${tw.map(mrow).join('')}</table>`:'<p class="muted">還沒有紀錄。</p>'}
+  <h3>最常排錯的句子</h3>${ts.length?`<table><tr><th>句子</th><th>關卡</th><th>錯誤次數</th><th>狀態</th></tr>${ts.map(mrow).join('')}</table>`:'<p class="muted">還沒有紀錄。</p>'}
+  <h3>已過關卡中還沒拼過的單字</h3><p>${unseen.length?unseen.map(esc).join('、'):'<span class="muted">全部都拼過了！</span>'}</p>
+  <p class="muted">錯誤次數從這個版本開始記錄，每按錯一次算一次。</p>
+  <div class="row noprint"><button class="btn" id="rprint">列印</button><button class="btn soft" id="rback">Back to map</button></div></div>`;
+ document.getElementById('rprint').onclick=()=>window.print();document.getElementById('rback').onclick=back||map}
 
 // Mumble's diary: one page is found after each boss
 const DIARY=[
