@@ -165,6 +165,41 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pip);outline-of
 .diary.new{animation:dnew .8s}
 @keyframes dnew{from{transform:rotate(-12deg) scale(.6);opacity:0}}
 .diaries{display:grid;gap:12px}
+.fighter.hero{container-type:inline-size}
+.acc{position:absolute;pointer-events:none;line-height:1;z-index:3}
+.acc.hat{top:-14%;left:44%;transform:translateX(-50%) rotate(-8deg);font-size:40cqw}
+.acc.pet{bottom:-4%;right:-30%;font-size:40cqw;animation:petb 1.4s ease-in-out infinite}
+@keyframes petb{50%{transform:translateY(-12%)}}
+.shopg{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.sitem{background:var(--paper);border-radius:14px;padding:10px 6px;text-align:center;box-shadow:0 3px 0 var(--fog-deep);display:flex;flex-direction:column;align-items:center;gap:4px}
+.sitem .se{font-size:2.6rem;line-height:1.1;background:none;border:0}
+.sitem .sn{font-family:var(--word);font-size:1.1rem}
+.sitem small{color:var(--fog-deep)}
+.sitem.on{outline:3px solid #E8C02A}
+.sitem .btn{font-size:.95rem;padding:6px 14px}
+.preview{display:flex;justify-content:center;margin:6px 0 12px}
+.preview .fighter{position:relative;bottom:auto;left:auto;width:120px}
+.rh{border-radius:18px;padding:14px;margin-bottom:14px;position:relative;overflow:hidden}
+.rh h3{font-family:var(--display);margin-bottom:8px}
+.rh.home{background:linear-gradient(#FFE9D6,#FFF7EE);border:3px solid #E8A87C}
+.rh.home::before{content:'';display:block;height:64px;margin:-14px -14px 10px;background:#E8746A;clip-path:polygon(10% 100%,50% 0,90% 100%)}
+.rh.farm{background:linear-gradient(#CDEBFF 0 30%,#BFE3A8 30%);border:3px solid #8DB86F}
+.rh.other{background:var(--paper)}
+.stks{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.stk{display:flex;flex-direction:column;align-items:center;min-width:76px;padding:6px 8px;border-radius:14px;background:rgba(255,255,255,.75);border:0;font:600 .95rem var(--word,inherit)}
+.stk span{font-size:2.2rem;line-height:1.1}
+.stk.locked span{filter:grayscale(1);opacity:.25}
+.stk.locked{color:var(--fog-deep)}
+.rh.farm .stk:not(.locked) span{animation:petb 2s ease-in-out infinite}
+.rh.farm .stk:nth-child(2n) span{animation-delay:.6s}
+.daily{background:var(--paper);border-radius:16px;padding:12px 16px;box-shadow:0 3px 0 var(--fog-deep)}
+.daily h3{font-family:var(--display);font-size:1.1rem;margin-bottom:6px}
+.dtask{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px dashed #d6dbe0}
+.dtask:last-of-type{border-bottom:0}
+.dtask .di{font-size:1.4rem}.dtask .dt{flex:1}.dtask .dt small{display:block;color:var(--fog-deep)}
+.dtask .dp{font-family:var(--display);color:var(--fog-deep)}
+.dtask.done .dp{color:var(--good)}
+.daily .btn{margin-top:8px}
 .book{display:flex;flex-direction:column;gap:10px;align-items:center;position:relative}
 .bkframe{position:relative;width:100%;aspect-ratio:3/2;border-radius:18px;overflow:hidden;background:#e9dcc8;touch-action:pan-y}
 .bkpic{position:absolute;inset:0;background:#cfe9f7 center/cover no-repeat}
@@ -430,6 +465,7 @@ function clear(zi){
  const stars=run?(run.miss<=2?3:run.miss<=6?2:1):0;if(stars){S.stars=S.stars||{};S.stars[zi]=Math.max(S.stars[zi]||0,stars);save()}
  const z=ZONES[zi],ui=unitOf(zi),u=UNITS[ui];
  if(S.cleared===zi){S.cleared=zi+1;save()}
+ dly('boss');
  const dNew=!(S.diary||[]).includes(zi)&&!!DIARY[zi];if(dNew){S.diary=[...(S.diary||[]),zi];save()}
  const unitEnd=u.subs[u.subs.length-1]===zi;
  const k=u.subs.indexOf(zi)+1;
@@ -605,9 +641,12 @@ function map(){
  const open=UNITS.filter(u=>u.subs.length),allDone=open.every(unitDone);
  app.innerHTML=hud()+`<div class="story">${PIP}<div class="bubble" id="say3d">${allDone?`<span class="en">Great job, ${esc(S.name)}!</span>You cleared all open islands and collected ${S.dex.length} words! More islands are coming soon.`:`<span class="en">Where to, ${esc(S.name)}?</span>Tap the island with the orange arrow! Each island has 4 stages. Foggy islands are locked.`}</div></div>
  <div class="sea" id="sea"><div class="labels" id="labels"></div><div class="tip">Drag to turn · pinch to zoom</div>${zoomHtml()}</div>
- <div class="row">${S.cleared>0?`<button class="btn" id="camp">🏕️ Practice Camp${campCount()?` (${campCount()} to review)`:''}</button>`:''}<button class="btn soft" id="shelf">📚 Storybooks</button><button class="btn soft" id="vset">Voice settings${AZ&&AZ.key?' (Azure on)':''}</button></div>
+ <div class="row">${S.cleared>0?`<button class="btn" id="camp">🏕️ Practice Camp${campCount()?` (${campCount()} to review)`:''}</button>`:''}<button class="btn soft" id="shopb">🛍️ Shop</button><button class="btn soft" id="houseb">🌈 Rainbow House</button><button class="btn soft" id="shelf">📚 Storybooks</button><button class="btn soft" id="vset">Voice settings${AZ&&AZ.key?' (Azure on)':''}</button></div>
+ ${S.name?dailyHtml():''}
  ${S.dex.length?`<div class="panel"><h2 style="font-size:1.2rem;margin-bottom:8px">Rainbow Book: ${S.dex.length} / ${dexTotal()} words <small style="font-weight:600;color:var(--fog-deep)">Tap a card to hear it</small></h2><div class="dex">${dexHtml()}</div></div>`:''}`;
  document.getElementById('vset').onclick=()=>voiceSettings(map);document.getElementById('shelf').onclick=()=>shelf(map);const cb=document.getElementById('camp');if(cb)cb.onclick=camp;
+ document.getElementById('shopb').onclick=()=>shop(map);document.getElementById('houseb').onclick=()=>house(map);
+ const dc=document.getElementById('dclaim');if(dc)dc.onclick=()=>{const d=daily();if(d.claimed||!dailyDone(d))return;d.claimed=true;addCoins(60);speak('Hooray! Sixty coins!');map()};
  mount(document.getElementById('sea'));rebuild();
 }
 function unitMap(ui){
@@ -962,7 +1001,7 @@ function stageHtml(zi,o){
  const foe=o.chest?'<div class="chestfoe">🎁</div>':o.keeper?spriteHtml(s.k,foeSvg('#4A5562',2)):spriteHtml(s.m+'-gray',foeSvg('#8A96A3',o.size));
  return `<div class="bstage" id="bst" style="${bg?`background-image:url(${bg})`:`--ground:${SCENE[zi]||'#CDE8B5'}`}">
   ${bg?'':'<div class="bsky"></div><div class="bground"></div>'}
-  <div class="fighter hero" id="hero"><div class="hpbar"><i id="herohp" style="width:${o.heroHp*100}%"></i></div>${IMG[heroImg()]?`<img src="${IMG[heroImg()]}" alt="hero">`:heroSvg()}</div>
+  <div class="fighter hero" id="hero"><div class="hpbar"><i id="herohp" style="width:${o.heroHp*100}%"></i></div>${IMG[heroImg()]?`<img src="${IMG[heroImg()]}" alt="hero">`:heroSvg()}${wearHtml()}</div>
   <div class="fighter foe ${o.keeper?'big':''}" id="foe"><div class="hpbar"><i id="foehp" style="width:${o.foeHp*100}%"></i></div><div class="fbody">${foe}</div></div>
   ${o.pic?`<div class="wbubble">${o.pic.startsWith('#')?`<span class="sw" style="background:${o.pic}"></span>`:o.pic}<small>${esc(o.gloss||'')}</small></div>`:''}
   <div class="combo${COMBO>1?' on':''}" id="combo">${COMBO>1?'🔥 Combo x'+COMBO:''}</div>
@@ -1047,7 +1086,7 @@ function battle(zi,list,k,st){
  });
  function attack(){
   if(!S.dex.includes(word)){S.dex.push(word);save()}
-  speak(word);FX.hero();if(P&&P.run)P.run.words++;
+  speak(word);FX.hero();if(P&&P.run)P.run.words++;dly('words');
   if(mode==='listen'){const wb=app.querySelector('.wbubble');if(wb)wb.innerHTML=(pic.startsWith('#')?`<span class="sw" style="background:${pic}"></span>`:pic)+`<small>${esc(gloss)}</small>`}
   setTimeout(()=>comboHit(MISSN===n0),250);const left=list.length-k-1;
   document.getElementById('foehp').style.width=(left/list.length*100)+'%';
@@ -1166,7 +1205,7 @@ function bindSkills(getHint,st){const pb=document.getElementById('skpip'),eb=doc
  if(eb)eb.onclick=()=>{if(SK.egg<=0)return;if(st.hearts>=5){const h=document.getElementById('hint');if(h)h.textContent='Henny: "Your hearts are full! Save my egg for later."';return}
   SK.egg--;st.hearts=5;updHearts(st);eb.querySelector('b').textContent=0;eb.disabled=true;const h=document.getElementById('hint');if(h)h.textContent='Henny: "Cluck! Eat my magic egg!" Your hearts are full!';speak('Cluck! Here is a magic egg!')}}
 function updCombo(){const b=document.getElementById('combo');if(!b)return;b.textContent=COMBO>1?'🔥 Combo x'+COMBO:'';b.classList.toggle('on',COMBO>1)}
-function comboHit(clean){if(!clean){COMBO=0;updCombo();return}COMBO++;if(P&&P.run)P.run.best=Math.max(P.run.best,COMBO);updCombo();
+function comboHit(clean){if(!clean){COMBO=0;updCombo();return}COMBO++;dly('combo',0,COMBO);if(P&&P.run)P.run.best=Math.max(P.run.best,COMBO);updCombo();
  if(COMBO>=3){const st=document.getElementById('bst');if(st){const c=document.createElement('div');c.className='crit';c.innerHTML='CRITICAL!<small>Combo x'+COMBO+' · +5 bonus coins</small>';st.appendChild(c);st.classList.remove('shake');void st.offsetWidth;st.classList.add('shake');setTimeout(()=>c.remove(),1500)}setTimeout(()=>addCoins(5),1000)}}
 function dexPic(w){for(const z of ZONES){const f=z.words.find(x=>x[0]===w);if(f)return f[1]}return '⭐'}
 function dexHtml(){return S.dex.map(w=>{const pic=dexPic(w);return `<button class="dexc" data-w="${esc(w)}" onclick="speak(this.dataset.w)"><b>${pic.startsWith('#')?`<span class="sw" style="background:${pic}"></span>`:pic}</b>${esc(w)}</button>`}).join('')}
@@ -1176,7 +1215,7 @@ function dropMiss(t,zi,v){const k=t+'|'+zi+'|'+v;if(S.miss&&S.miss.includes(k)){
 function pickSent(zi){const L=SENT[zi]||[];if(!L.length)return ZONES[zi].gate[0];const used=P?(P.usedS=P.usedS||[]):[];const seen=S.seenS=S.seenS||[];
  let c=L.filter(x=>!used.includes(x.a)&&!seen.includes(zi+'|'+x.a));if(!c.length)c=L.filter(x=>!used.includes(x.a));if(!c.length){used.length=0;c=L}
  const g=c[Math.floor(Math.random()*c.length)];used.push(g.a);if(!seen.includes(zi+'|'+g.a)){seen.push(zi+'|'+g.a);save()}return g}
-function chestFx(){const b=document.querySelector('#foe .fbody');if(b)b.innerHTML='<div class="chestfoe open">💰</div>'}
+function chestFx(){dly('chest');const b=document.querySelector('#foe .fbody');if(b)b.innerHTML='<div class="chestfoe open">💰</div>'}
 
 function sentQ(zi,g,o){
  const z=ZONES[zi],st=o.st||{hearts:5};
@@ -1251,7 +1290,7 @@ function sentQ(zi,g,o){
  }
  function win(){
   if(o.hideQ){const qt=document.getElementById('qtext');if(qt){qt.textContent=g.q;qt.classList.remove('hidq')}}
-  if(P&&P.run){P.run.sents++;if(ki>=0)P.run.words++}setTimeout(()=>comboHit(MISSN===q0),250);
+  dly('sents');if(ki>=0)dly('words');if(P&&P.run){P.run.sents++;if(ki>=0)P.run.words++}setTimeout(()=>comboHit(MISSN===q0),250);
   if(o.onRight)return o.onRight(hint);
   FX.hero();const fh=document.getElementById('foehp');if(fh)fh.style.width='0%';
   setTimeout(()=>o.chest?chestFx():FX.purify(zi,false),450);setTimeout(()=>addCoins(o.reward||10),700);
@@ -1297,9 +1336,9 @@ function camp(){
  const next=()=>{
   if(i>=items.length)return campEnd(got,items.length);
   const it=items[i++],lab=`Practice Camp · ${i} / ${items.length}`,n0=MISSN;
-  if(it.w){const w=it.w;Object.assign(st,{noMix:true,label:lab,reward:5,finisher:null,chest:false,winText:'Nice!',next:'Next',onWin:()=>{if(MISSN===n0)dropMiss('w',it.zi,w[0]);got++;next()}});
+  if(it.w){const w=it.w;Object.assign(st,{noMix:true,label:lab,reward:5,finisher:null,chest:false,winText:'Nice!',next:'Next',onWin:()=>{if(MISSN===n0)dropMiss('w',it.zi,w[0]);got++;dly('camp');next()}});
    battle(it.zi,[[w[0],w[1],w[2],1]],0,st)}
-  else sentQ(it.zi,it.g,{st,label:lab,spell:true,reward:5,winText:'Nice!',next:'Next',onWin:()=>{if(MISSN===n0){dropMiss('s',it.zi,it.g.a);if(it.g.key)dropMiss('w',it.zi,it.g.key)}got++;next()}});
+  else sentQ(it.zi,it.g,{st,label:lab,spell:true,reward:5,winText:'Nice!',next:'Next',onWin:()=>{if(MISSN===n0){dropMiss('s',it.zi,it.g.a);if(it.g.key)dropMiss('w',it.zi,it.g.key)}got++;dly('camp');next()}});
  };
  next();
 }
@@ -1324,6 +1363,53 @@ const STORY=[
  {intro:['The animals say mean words.','Say nice words!'],kOpen:'QUACK! You are small! You are dirty!',kWin:'Quack... Sorry. You are a big hero!',outro:['Duck King: The little hen is sad. She is in the henhouse.']},
  {intro:['Apples grow here. But they are grey!'],kOpen:"Go away. I'm grey. I'm small.",kWin:"But I'm ME! I like me!",outro:['Look up! It is Mumble!','Mumble: Go home! No more words!','{name}: Stop! Give me the crystals!','Mumble: No! Words are bad. They laugh at me.','Henny: Can I come? I can help!','Pip: Mumble... To be continued...']}
 ];
+// coin shop: hats and pets the hero wears in battle
+const SHOP=[
+ {id:'cap',e:'🧢',en:'a cap',zh:'棒球帽',price:30,slot:'hat'},
+ {id:'bow',e:'🎀',en:'a bow',zh:'蝴蝶結',price:30,slot:'hat'},
+ {id:'flower',e:'🌼',en:'a flower',zh:'小花',price:40,slot:'hat'},
+ {id:'tophat',e:'🎩',en:'a top hat',zh:'高帽子',price:60,slot:'hat'},
+ {id:'crown',e:'👑',en:'a crown',zh:'皇冠',price:120,slot:'hat'},
+ {id:'chick',e:'🐥',en:'a chick',zh:'小雞',price:50,slot:'pet'},
+ {id:'cat',e:'🐱',en:'a cat',zh:'貓咪',price:80,slot:'pet'},
+ {id:'dog',e:'🐶',en:'a dog',zh:'小狗',price:80,slot:'pet'},
+ {id:'bunny',e:'🐰',en:'a bunny',zh:'兔子',price:100,slot:'pet'},
+ {id:'unicorn',e:'🦄',en:'a unicorn',zh:'獨角獸',price:200,slot:'pet'}];
+const shopItem=id=>SHOP.find(x=>x.id===id);
+function wearHtml(){const w=S.wear||{},h=shopItem(w.hat),pt=shopItem(w.pet);return (h?`<span class="acc hat">${h.e}</span>`:'')+(pt?`<span class="acc pet">${pt.e}</span>`:'')}
+function shop(back){const own=S.own||[],w=S.wear||{};
+ app.innerHTML=hud()+`<div class="panel"><h2 style="font-size:1.5rem">🛍️ Rainbow Shop</h2><p>Use your coins! Tap a picture to hear the word.</p>
+  <div class="preview"><div class="fighter hero">${IMG[heroImg()]?`<img src="${IMG[heroImg()]}" alt="hero">`:heroSvg()}${wearHtml()}</div></div>
+  <div class="shopg">${SHOP.map(it=>{const has=own.includes(it.id),on=w[it.slot]===it.id;return `<div class="sitem${on?' on':''}"><button class="se" data-say="${esc(it.en)}" aria-label="${esc(it.en)}">${it.e}</button><span class="sn">${esc(it.en)}</span><small>${esc(it.zh)}</small>
+   ${has?`<button class="btn ${on?'soft':''}" data-wear="${it.id}">${on?'Take off':'Wear'}</button>`:`<button class="btn" data-buy="${it.id}" ${(S.coins||0)<it.price?'disabled style="opacity:.45"':''}>🪙 ${it.price}</button>`}</div>`}).join('')}</div>
+  <div class="row"><button class="btn soft" id="shback">Back to map</button></div></div>`;
+ bindSay();
+ app.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{const it=shopItem(b.dataset.buy);if((S.coins||0)<it.price)return;S.coins-=it.price;S.own=[...own,it.id];S.wear={...w,[it.slot]:it.id};save();speak('Here you are! '+it.en+'!');shop(back)});
+ app.querySelectorAll('[data-wear]').forEach(b=>b.onclick=()=>{const it=shopItem(b.dataset.wear);const nw={...w};nw[it.slot]=nw[it.slot]===it.id?null:it.id;S.wear=nw;save();if(nw[it.slot])speak(it.en);shop(back)});
+ document.getElementById('shback').onclick=back||map}
+
+// rainbow house: every rescued word comes home, tap it to hear it
+function house(back){const seen=new Set();
+ const secs=UNITS.map((u,ui)=>{if(!u.subs.length)return '';const items=[];u.subs.forEach(zi=>ZONES[zi].words.forEach(w=>{if(seen.has(w[0]))return;seen.add(w[0]);items.push(w)}));
+  const got=items.filter(w=>S.dex.includes(w[0])).length;const cls=ui===0?'home':ui===1?'farm':'other';
+  return `<div class="rh ${cls}"><h3>${ui===0?'🏠 My Home':ui===1?'🐄 My Farm':esc(u.en)} <small>${got} / ${items.length}</small></h3><div class="stks">${items.map(w=>{const g=S.dex.includes(w[0]);return `<button class="stk${g?'':' locked'}" ${g?`data-say="${esc(w[0])}"`:''} aria-label="${g?esc(w[0]):'not found yet'}"><span>${w[1].startsWith('#')?'🎨':w[1]}</span>${g?esc(w[0]):'?'}</button>`}).join('')}</div></div>`}).join('');
+ app.innerHTML=hud()+`<div class="panel"><h2 style="font-size:1.5rem">🌈 Rainbow House</h2><p style="margin-bottom:10px">Every word you spell comes home! Tap to hear it. Grey ones are still lost in the fog.</p>${secs}
+  <div class="row"><button class="btn soft" id="hback">Back to map</button></div></div>`;
+ bindSay();document.getElementById('hback').onclick=back||map}
+
+// daily quests: three small goals a day, then a chest
+const DAILY=[{k:'words',n:8,t:'Spell 8 words',zh:'拼出 8 個單字',i:'✏️'},{k:'sents',n:4,t:'Write 4 sentences',zh:'完成 4 個句子',i:'📝'},{k:'combo',n:3,t:'Get a combo of 3',zh:'連續答對 3 題',i:'🔥'},
+ {k:'chest',n:1,t:'Open a treasure chest',zh:'打開 1 個寶箱',i:'🎁'},{k:'camp',n:3,t:'Practice 3 times at camp',zh:'在練習營練習 3 題',i:'🏕️'},{k:'boss',n:1,t:'Beat a boss',zh:'打敗 1 個魔王',i:'👑'},{k:'book',n:1,t:'Read a storybook again',zh:'從書架重讀 1 本故事書',i:'📚'}];
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()};
+function daily(){const t=today();if(!S.daily||S.daily.date!==t){let h=7;for(const c of t)h=(h*31+c.charCodeAt(0))>>>0;
+  const pool=DAILY.map((x,i)=>i).filter(i=>(DAILY[i].k!=='camp'||S.cleared>0)&&(DAILY[i].k!=='book'||(S.books||[]).length>1));const pick=[];
+  while(pick.length<3&&pool.length){h=(h*1103515245+12345)>>>0;pick.push(pool.splice((h>>>8)%pool.length,1)[0])}
+  S.daily={date:t,tasks:pick,c:{},claimed:false};save()}return S.daily}
+function dly(k,n,max){try{const d=daily();if(max!=null)d.c[k]=Math.max(d.c[k]||0,max);else d.c[k]=(d.c[k]||0)+(n||1);save()}catch(e){}}
+const dailyDone=d=>d.tasks.every(i=>(d.c[DAILY[i].k]||0)>=DAILY[i].n);
+function dailyHtml(){const d=daily();return `<div class="daily" id="daily"><h3>📅 Today's Quests</h3>${d.tasks.map(i=>{const q=DAILY[i],v=Math.min(d.c[q.k]||0,q.n),ok=v>=q.n;return `<div class="dtask${ok?' done':''}"><span class="di">${q.i}</span><span class="dt">${esc(q.t)}<small>${esc(q.zh)}</small></span><span class="dp">${ok?'✅':v+' / '+q.n}</span></div>`}).join('')}
+ ${d.claimed?'<small>Great job! Come back tomorrow for new quests.</small>':dailyDone(d)?'<button class="btn" id="dclaim">🎁 Open the daily chest! +60 coins</button>':'<small>Finish all three to open the daily chest!</small>'}</div>`}
+
 // Mumble's diary: one page is found after each boss
 const DIARY=[
  ["I am Mumble. My home is grey. It is very quiet.","我是 Mumble。我的家是灰色的，非常安靜。"],
@@ -1393,7 +1479,7 @@ function shelf(back){
   ${(S.diary||[]).length?`<div class="row" style="margin-bottom:10px"><button class="btn soft" id="diaryb">📔 Mumble's Diary (${S.diary.length} / ${DIARY.length})</button></div>`:''}
   ${ids.length?`<div class="shelf">${ids.map(id=>{const b=BOOKS[id],s=b.zi!=null?SPR[b.zi]:null,bg=b.bg?IMG[b.bg]:s&&IMG[s.bg];return `<button class="bookbtn" data-id="${id}"><span class="cover" style="${bg?`background-image:url(${bg})`:''}"></span><b>${esc(b.title)}</b></button>`}).join('')}</div>`:'<p>Clear a stage to get a storybook!</p>'}
   <div class="row"><button class="btn soft" id="sback">Back to map</button></div></div>`;
- app.querySelectorAll('.bookbtn').forEach(x=>x.onclick=()=>storybook(x.dataset.id,()=>shelf(back)));
+ app.querySelectorAll('.bookbtn').forEach(x=>x.onclick=()=>(dly('book'),storybook)(x.dataset.id,()=>shelf(back)));
  const db=document.getElementById('diaryb');if(db)db.onclick=()=>diaryBook(()=>shelf(back));
  document.getElementById('sback').onclick=back||map;
 }
