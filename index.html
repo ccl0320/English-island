@@ -101,6 +101,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pip);outline-of
 .fighter.foe{right:6%}
 .fighter.foe.big{width:34%;max-width:190px}
 .fighter.foe .fbody{width:100%;height:100%}
+.fighter.foe .foe3d{width:100%;height:100%}.foe3d canvas{width:100%;height:100%;display:block}
 .fighter.foe .fbody img{filter:drop-shadow(0 6px 0 rgba(0,0,0,.12))}
 .fighter.foe .fbody img.tint{filter:sepia(.6) saturate(3) hue-rotate(300deg)}
 .fighter.foe .fbody.calm{filter:saturate(1.6) brightness(1.1)}
@@ -382,6 +383,8 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pip);outline-of
 
 <div class="stage" id="app" aria-live="polite"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="lib/GLTFLoader.js"></script>
+<script src="lib/SkeletonUtils.js"></script>
 
 <script>
 const ZONES=[
@@ -539,7 +542,7 @@ function setupLights(sc,span){const T=THREE;
  sc.background=skyTexture();
  sc.add(new T.HemisphereLight('#EAF6FF','#5E7F6A',0.75));
  const sun=new T.DirectionalLight('#FFF1D6',0.95);sun.position.set(span*.6,span*1.2,span*.5);sun.castShadow=true;
- sun.shadow.mapSize.set(2048,2048);const c=sun.shadow.camera;c.left=c.bottom=-span;c.right=c.top=span;c.near=1;c.far=span*4;sun.shadow.bias=-0.0008;sun.shadow.normalBias=0.02;
+ sun.shadow.mapSize.set(SHADOW,SHADOW);const c=sun.shadow.camera;c.left=c.bottom=-span;c.right=c.top=span;c.near=1;c.far=span*4;sun.shadow.bias=-0.0008;sun.shadow.normalBias=0.02;
  sc.add(sun);sc.add(sun.target);const fill=new T.DirectionalLight('#C9DDFF',0.25);fill.position.set(-span,span*.5,-span);sc.add(fill)}
 function shadowAll(root){root.traverse(o=>{if(o.isMesh&&!o.userData.noShadow){o.castShadow=true;o.receiveShadow=true}})}
 function makeCloud(){const T=THREE,g=new T.Group(),m=new T.MeshStandardMaterial({color:'#ffffff',roughness:1,flatShading:true});
@@ -563,25 +566,30 @@ function rock(g,x,z,s,y){const r=new THREE.Mesh(new THREE.DodecahedronGeometry(.
 // ---------- 3D island world ----------
 const ISL=[[-7,4.2],[-3,6.4],[1.6,4.8],[6,5.8],[7.6,1.2],[3.6,-1.8],[-1,-0.6],[-5.6,-3.6]];
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+// phones and tablets: lighter shadows and pixel ratio so the 3D stays smooth
+const LITE=matchMedia('(pointer: coarse)').matches;const SHADOW=LITE?1024:2048;const DPR=Math.min(LITE?1.5:2,window.devicePixelRatio||1);
 let W=null;
 function getWorld(){
  if(W!==null)return W||null;
  try{
   if(!window.THREE)throw new Error('no three');
   const T=THREE,r=new T.WebGLRenderer({antialias:true});
-  r.setPixelRatio(Math.min(2,window.devicePixelRatio||1));r.shadowMap.enabled=true;r.shadowMap.type=T.PCFSoftShadowMap;
+  r.setPixelRatio(DPR);r.shadowMap.enabled=true;r.shadowMap.type=LITE?T.PCFShadowMap:T.PCFSoftShadowMap;
   const scene=new T.Scene();scene.fog=new T.Fog('#CFE8F3',30,70);
   const cam=new T.PerspectiveCamera(45,1,0.1,200);cam.position.set(0,18,16);
   setupLights(scene,14);const clouds=addClouds(scene,8,44,8);
   const seaG=new T.PlaneGeometry(130,130,50,50);seaG.rotateX(-Math.PI/2);
-  const sea=new T.Mesh(seaG,new T.MeshPhongMaterial({color:'#2F8FC0',flatShading:true,shininess:60,specular:'#88B8D8'}));sea.receiveShadow=true;sea.userData.noShadow=true;scene.add(sea);
+  const seaM=new T.MeshPhongMaterial({color:'#2F8FC0',flatShading:true,shininess:60,specular:'#88B8D8'}),seaT={value:0};
+  // waves run on the GPU (was ~2,600 vertices recomputed on the CPU every frame)
+  seaM.onBeforeCompile=sh=>{sh.uniforms.uT=seaT;sh.vertexShader='uniform float uT;\n'+sh.vertexShader.replace('#include <begin_vertex>','vec3 transformed=vec3(position);transformed.y+=sin(position.x*.45+uT*1.1)*.09+cos(position.z*.38+uT*.9)*.09-.05;')};
+  const sea=new T.Mesh(seaG,seaM);sea.receiveShadow=true;sea.userData.noShadow=true;scene.add(sea);
   // dotted sea route between islands
   const route=new T.Group();
   for(let i=0;i<ISL.length-1;i++){const[a,b]=[ISL[i],ISL[i+1]];const d=Math.hypot(b[0]-a[0],b[1]-a[1]);const n=Math.floor(d/0.6);
    for(let k=3;k<n-2;k++){const t=k/n;const dot=new T.Mesh(new T.CylinderGeometry(.09,.09,.05,8),new T.MeshLambertMaterial({color:'#ffffff'}));dot.position.set(a[0]+(b[0]-a[0])*t,.12,a[1]+(b[1]-a[1])*t);route.add(dot)}}
   scene.add(route);
   const isl=new T.Group();scene.add(isl);
-  W={zoom:1,T,r,scene,cam,sea,isl,tgt:new T.Vector3(0,0,1.3),goal:{pos:new T.Vector3(0,18,16),tgt:new T.Vector3(0,0,1.3)},yaw:0,mode:'map',unit:-1,clouds,foams:[],labels:[],spin:[],bob:[],fogs:[],el:null,w:0,h:0,t:0,hits:[]};
+  W={zoom:1,T,r,scene,cam,sea,seaT,isl,tgt:new T.Vector3(0,0,1.3),goal:{pos:new T.Vector3(0,18,16),tgt:new T.Vector3(0,0,1.3)},yaw:0,mode:'map',unit:-1,clouds,foams:[],labels:[],spin:[],bob:[],fogs:[],el:null,w:0,h:0,t:0,hits:[]};
   // input
   let down=null;const pts=new Map();let pinch=null;
   const pd=()=>{const a=[...pts.values()];return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)};
@@ -676,7 +684,7 @@ function loop(ts){
  if(w!==W.w||h!==W.h){W.w=w;W.h=h;W.el.classList.toggle('narrow',w<560);W.r.setSize(w,h,false);W.cam.aspect=w/h;W.cam.updateProjectionMatrix();if(!W.dragged)W.yaw=W.mode!=='arena'&&w/h<1?Math.PI/2:0;aim()}
  const t=ts/1000;
  if(!RM){
-  const p=W.sea.geometry.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i);p.setY(i,Math.sin(x*.45+t*1.1)*.09+Math.cos(z*.38+t*.9)*.09-.05)}p.needsUpdate=true;
+  if(W.seaT)W.seaT.value=t;
   W.spin.forEach(c=>{c.rotation.y=t*1.2});W.bob.forEach((b,i)=>{b.position.y=(b.userData.y0??(b.userData.y0=b.position.y))+Math.abs(Math.sin(t*3+i))*.18});
   const cl=W.mode==='arena'&&P?P.clouds:W.clouds;(cl||[]).forEach(c=>{c.position.x+=c.userData.v*dt;if(c.position.x>c.userData.spread/2)c.position.x=-c.userData.spread/2});
   (W.mode==='arena'&&P?P.foams:W.foams).forEach((f,i)=>{f.material.opacity=.45+.35*Math.sin(t*2+i);f.scale.setScalar(1+.025*Math.sin(t*2+i))});
@@ -744,11 +752,55 @@ function makeHero(){
  const cap=new T.Mesh(new T.SphereGeometry(.285,20,10,0,Math.PI*2,0,Math.PI/2),M('#E5484D'));cap.position.y=.96;g.add(cap);
  const pip=new T.Mesh(new T.SphereGeometry(.17,16,12),M('#F2A93B'));pip.position.set(.55,1.15,0);g.add(pip);g.userData.pip=pip;g.scale.setScalar(1.4);return g}
 function makeMonster(zi,big,keeper){const T=THREE,s=SPR[zi]||{};
+ if(!keeper){const md=modelMonster(s.m,big?1.75:1.4);if(md)return md}
  const sp=keeper?charSprite(s.k,3.3,1):charSprite(s.m+'-gray',big?2.1:1.7,-1);if(sp)return sp;
  const g=new T.Group(),k=keeper?2:big?1.4:1.15;
  const body=new T.Mesh(new T.SphereGeometry(.45*k,24,18),M(keeper?'#4A5562':'#8A96A3'));body.scale.y=.85;body.position.y=.4*k;g.add(body);
  for(const x of[-.15,.15]){const e=new T.Mesh(new T.SphereGeometry(.11*k,14,10),M('#ffffff'));e.position.set(x*k,.5*k,.36*k);g.add(e)}
  return g}
+
+// ---------- Blender models (GLB, made by tools/blender/*.py) ----------
+// A monster listed here is drawn in 3D; if its file is missing or fails to load, the PNG sprite is used as before.
+const MODELS={'m11-dust':'models/m11-dust.glb'};
+const GLB={};
+(function loadModels(){if(!window.THREE||!THREE.GLTFLoader)return;const L=new THREE.GLTFLoader();
+ Object.entries(MODELS).forEach(([k,u])=>L.load(u,g=>{
+  g.scene.traverse(o=>{if(!o.isMesh)return;o.castShadow=true;o.receiveShadow=true;const m=o.material;
+   // the game draws hex colours as-is (no sRGB output), so bring Blender's linear colours back to hex space
+   if(m&&m.color){m.color.convertLinearToSRGB();m.metalness=0}});
+  GLB[k]=g},undefined,()=>{}))})();
+function modelMonster(name,h){const g0=GLB[name];if(!g0)return null;const T=THREE;
+ const s=T.SkeletonUtils?T.SkeletonUtils.clone(g0.scene):g0.scene.clone(true),mats=[];
+ s.traverse(o=>{if(!o.isMesh)return;o.material=o.material.clone();const c=o.material.color.clone(),l=c.r*.3+c.g*.59+c.b*.11;
+  mats.push({m:o.material,c,gr:new T.Color(l*.7+.12,l*.72+.13,l*.78+.15)})});
+ const b=new T.Box3().setFromObject(s);s.scale.setScalar(h/(b.max.y-b.min.y));
+ const g=new T.Group();g.add(s);const mixer=new T.AnimationMixer(s),acts={};
+ g0.animations.forEach(a=>acts[a.name]=mixer.clipAction(a));
+ const md={s,mixer,acts,mats,cur:null,col:-1,happy:s.getObjectByName('face_happy'),grumpy:s.getObjectByName('face_grumpy')};
+ mixer.addEventListener('finished',()=>{if(md.cur&&md.cur!=='color_up')mPlay(md,'idle')});
+ mColor(md,0);mPlay(md,'idle');g.userData={model:md,sh:h};return g}
+function mPlay(md,n,once){const a=md.acts[n];if(!a||(md.cur===n&&!once))return;const old=md.cur&&md.acts[md.cur];
+ a.reset();a.setLoop(once?THREE.LoopOnce:THREE.LoopRepeat);a.clampWhenFinished=!!once;a.play();if(old&&old!==a)a.crossFadeFrom(old,.15,false);md.cur=n}
+function mColor(md,t){t=Math.max(0,Math.min(1,t));if(t===md.col)return;md.col=t;
+ md.mats.forEach(x=>x.m.color.copy(x.gr).lerp(x.c,t));if(md.happy)md.happy.visible=t>=.5;if(md.grumpy)md.grumpy.visible=t<.5}
+// the same model on the spelling battle screen: one small renderer, moved into each new battle screen
+const BF={r:null,sc:null,cam:null,mon:null,name:null,wash:-1,last:0};
+function foe3dHtml(name){return GLB[name]&&getBF()?`<div class="foe3d" id="foe3d" data-m="${name}"></div>`:null}
+function getBF(){if(BF.r)return BF.r;if(BF.r===false)return null;
+ try{const T=THREE,r=new T.WebGLRenderer({antialias:true,alpha:true});r.setPixelRatio(DPR);r.setClearColor(0,0);
+  const sc=new T.Scene();sc.add(new T.HemisphereLight(0xffffff,0x9a8f80,.75));const d=new T.DirectionalLight(0xfff1dd,.75);d.position.set(-3,6,5);sc.add(d);
+  const cam=new T.PerspectiveCamera(30,6/7,.1,50);cam.position.set(-.5,1.1,3.9);cam.lookAt(0,.74,0);
+  Object.assign(BF,{r,sc,cam});requestAnimationFrame(foeLoop);return r}catch(e){BF.r=false;return null}}
+function foeLoop(ts){requestAnimationFrame(foeLoop);const el=document.getElementById('foe3d');if(!el)return;
+ const dt=Math.min(.05,(ts-BF.last)/1000||0);BF.last=ts;
+ if(BF.r.domElement.parentNode!==el){el.appendChild(BF.r.domElement);const n=el.dataset.m;
+  if(BF.name!==n||!BF.mon){if(BF.mon)BF.sc.remove(BF.mon);BF.mon=modelMonster(n,1.5);BF.name=n;if(BF.mon){BF.mon.rotation.y=-.5;BF.sc.add(BF.mon)}}
+  if(BF.mon){mColor(BF.mon.userData.model,0);mPlay(BF.mon.userData.model,'idle')}BF.wash=-1;BF.w=0}
+ const w=el.clientWidth,h=el.clientHeight;if(!w||!h||!BF.mon)return;
+ if(w!==BF.w||h!==BF.h){BF.w=w;BF.h=h;BF.r.setSize(w,h,false);BF.cam.aspect=w/h;BF.cam.updateProjectionMatrix()}
+ const md=BF.mon.userData.model;md.mixer.update(RM?0:dt);if(BF.wash>=0){BF.wash+=dt*1.6;mColor(md,BF.wash)}
+ BF.r.render(BF.sc,BF.cam)}
+function foe3d(){return document.getElementById('foe3d')&&BF.mon?BF.mon.userData.model:null}
 
 // ---------- Melissa-style clay scenery ----------
 const MC={};
@@ -809,7 +861,7 @@ function buildArena(zi){
  const T=THREE,z=ZONES[zi],ui=unitOf(zi),sc=new T.Scene(),anim=[],farm=ui===1,v=zi%4;
  sc.fog=new T.Fog('#f4eee3',60,240);
  const hemi=new T.HemisphereLight(0xeef6fa,0x8f8270,.6);sc.add(hemi);
- const sun=new T.DirectionalLight(0xfff1dd,.72);sun.position.set(-18,34,16);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+ const sun=new T.DirectionalLight(0xfff1dd,.72);sun.position.set(-18,34,16);sun.castShadow=true;sun.shadow.mapSize.set(SHADOW,SHADOW);
  Object.assign(sun.shadow.camera,{left:-26,right:26,top:26,bottom:-26,near:1,far:100});sun.shadow.bias=-.0006;sun.shadow.normalBias=.045;sc.add(sun);
  const fill=new T.DirectionalLight(0xbfd6ff,.14);fill.position.set(24,14,-20);sc.add(fill);
  const skyMat=new T.ShaderMaterial({side:T.BackSide,depthWrite:false,fog:false,uniforms:{top:{value:new T.Color('#9fd0ec')},bottom:{value:new T.Color('#f4eee3')}},
@@ -973,6 +1025,9 @@ function stepArena(dt,t){
  if(!P.lock&&P.grace<=0&&P.npc&&!P.npc.done&&Math.hypot(h.position.x-P.npc.g.position.x,h.position.z-P.npc.g.position.z)<1.3){talkNpc(P.npc);return}
  if(!P.lock&&P.grace<=0)for(const c of P.chests||[]){if(!c.open&&Math.hypot(h.position.x-c.g.position.x,h.position.z-c.g.position.z)<1.3){openChest(c);return}}
  for(const o of P.mons){const m=o.m,mu=m.userData;
+  if(o.dying>=0&&mu.model){const md=mu.model;md.mixer.update(dt);if(md.cur!=='color_up')mPlay(md,'color_up',true);
+   o.dying+=dt*.95;mColor(md,o.dying*2.2);if(o.dying>.75){m.scale.setScalar(Math.max(.01,1-(o.dying-.75)*4))}
+   if(o.dying>=1){P.sc.remove(m);o.dying=-1;if(o.lbl){o.lbl.el.remove();W.labels=W.labels.filter(l=>l!==o.lbl)}}continue}
   if(o.dying>=0){o.dying+=dt*2.5;m.scale.setScalar(1+o.dying*.6);m.position.y=.3+o.dying;if(o.dying>=1){P.sc.remove(m);o.dying=-1;if(o.lbl){o.lbl.el.remove();W.labels=W.labels.filter(l=>l!==o.lbl)}}continue}
   if(!o.alive)continue;
   let vx=0,vz=0;
@@ -980,6 +1035,8 @@ function stepArena(dt,t){
    if(o===nm&&d<4.2&&P.grace<=0){vx=(h.position.x-m.position.x)/d*1.1;vz=(h.position.z-m.position.z)/d*1.1}
    else{const tx=pathX(mu.home)+Math.sin(t*.6+mu.ph)*2.2,tz=mu.home+Math.cos(t*.4+mu.ph)*.6;vx=(tx-m.position.x)*.9;vz=(tz-m.position.z)*.9}
    m.position.x+=vx*dt;m.position.z+=vz*dt;clampIn(m.position)}
+  if(mu.model){const md=mu.model;md.mixer.update(RM?0:dt);mPlay(md,Math.hypot(vx,vz)>.35?'walk':'idle');
+   const want=Math.atan2(h.position.x-m.position.x,h.position.z-m.position.z);let da=want-m.rotation.y;da=Math.atan2(Math.sin(da),Math.cos(da));m.rotation.y+=da*Math.min(1,dt*6)}
   if(mu.sprite){faceSprite(m,vx);const q=Math.sin(t*5+mu.ph);mu.sprite.scale.y=mu.sh*(1+q*.05);mu.sprite.position.y=Math.abs(Math.sin(t*4+mu.ph))*.15}
   if(!P.lock&&P.grace<=0&&o===nm&&Math.hypot(h.position.x-m.position.x,h.position.z-m.position.z)<1.1){touchMonster(o);return}
  }
@@ -1054,7 +1111,7 @@ function heroSvg(){return `<svg viewBox="0 0 120 140"><ellipse cx="60" cy="134" 
 function spriteHtml(name,fallback){return IMG[name]?`<img src="${IMG[name]}" alt="">`:fallback}
 function stageHtml(zi,o){
  const s=SPR[zi]||{},bg=IMG[s.bg];
- const foe=o.chest?'<div class="chestfoe">🎁</div>':o.keeper?spriteHtml(s.k,foeSvg('#4A5562',2)):spriteHtml(s.m+'-gray',foeSvg('#8A96A3',o.size));
+ const foe=o.chest?'<div class="chestfoe">🎁</div>':o.keeper?spriteHtml(s.k,foeSvg('#4A5562',2)):foe3dHtml(s.m)||spriteHtml(s.m+'-gray',foeSvg('#8A96A3',o.size));
  return `<div class="bstage" id="bst" style="${bg?`background-image:url(${bg})`:`--ground:${SCENE[zi]||'#CDE8B5'}`}">
   ${bg?'':'<div class="bsky"></div><div class="bground"></div>'}
   <div class="fighter hero" id="hero"><div class="hpbar"><i id="herohp" style="width:${o.heroHp*100}%"></i></div>${IMG[heroImg()]?`<img src="${IMG[heroImg()]}" alt="hero">`:heroSvg()}${wearHtml()}</div>
@@ -1067,8 +1124,9 @@ const FX={
   h.style.setProperty('--dx',(st.clientWidth-h.clientWidth-f.clientWidth-st.clientWidth*.12)+'px');
   if(IMG['hero-attack']&&heroImg()==='hero-boy'){const im=h.querySelector('img');if(im){im.src=IMG['hero-attack'];setTimeout(()=>im.src=IMG['hero-boy'],450)}}
   h.classList.remove('atk');void h.offsetWidth;h.classList.add('atk');
-  setTimeout(()=>{f.classList.remove('hurt');void f.offsetWidth;f.classList.add('hurt');FX.slash();FX.num(f,'-1')},200)},
+  setTimeout(()=>{f.classList.remove('hurt');void f.offsetWidth;f.classList.add('hurt');FX.slash();FX.num(f,'-1');const md=foe3d();if(md)mPlay(md,'hurt',true)},200)},
  foe(){const h=document.getElementById('hero'),f=document.getElementById('foe'),st=document.getElementById('bst');if(!h)return;
+  const md=foe3d();if(md)mPlay(md,'laugh',true);
   f.style.setProperty('--dx',(st.clientWidth-h.clientWidth-f.clientWidth-st.clientWidth*.12)+'px');
   f.classList.remove('atk');void f.offsetWidth;f.classList.add('atk');
   setTimeout(()=>{h.classList.remove('hurt');void h.offsetWidth;h.classList.add('hurt');FX.num(h,'Miss')},200)},
@@ -1078,7 +1136,8 @@ const FX={
   n.style.left=(el.offsetLeft+el.clientWidth/2)+'px';n.style.top=(el.offsetTop+10)+'px';fx.appendChild(n);setTimeout(()=>n.remove(),900)},
  purify(zi,keeper){const f=document.getElementById('foe');if(!f)return;const s=SPR[zi]||{},z=ZONES[zi];
   const body=f.querySelector('.fbody');
-  if(keeper)body.classList.add('calm');else body.innerHTML=IMG[s.m+'-color']?`<img src="${IMG[s.m+'-color']}" alt="">`:IMG[s.m+'-gray']?`<img src="${IMG[s.m+'-gray']}" alt="" class="tint">`:foeSvg(z.color,1);
+  const md=!keeper&&foe3d();
+  if(md){BF.wash=0;mPlay(md,'color_up',true)}else if(keeper)body.classList.add('calm');else body.innerHTML=IMG[s.m+'-color']?`<img src="${IMG[s.m+'-color']}" alt="">`:IMG[s.m+'-gray']?`<img src="${IMG[s.m+'-gray']}" alt="" class="tint">`:foeSvg(z.color,1);
   f.classList.add('pure');const fx=document.getElementById('fx');
   for(let i=0;i<14;i++){const p=document.createElement('i');p.className='spark';p.style.left=(f.offsetLeft+f.clientWidth/2)+'px';p.style.top=(f.offsetTop+f.clientHeight/2)+'px';
    p.style.setProperty('--x',(Math.random()*160-80)+'px');p.style.setProperty('--y',(-Math.random()*120-20)+'px');p.style.background=['#E5484D','#F08C2E','#E8C02A','#2E9E5B','#3A7BD5','#8E4EC6'][i%6];fx.appendChild(p);setTimeout(()=>p.remove(),900)}}
