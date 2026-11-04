@@ -31,7 +31,7 @@ jobs:
         run: |
           W=android/app/src/main/assets/www
           mkdir -p "$W"
-          cp -r index.html img audio lib models "$W/"
+          cp -r index.html img audio lib models icons "$W/"
           curl -fsSL https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js -o "$W/three.min.js"
           sed -i 's#https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js#three.min.js#' "$W/index.html"
           grep -q 'src="three.min.js"' "$W/index.html"

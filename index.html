@@ -379,6 +379,9 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pip);outline-of
 .toast.on{opacity:1}
 .tip{position:absolute;right:10px;bottom:8px;font-size:.75rem;background:rgba(255,255,255,.75);padding:2px 10px;border-radius:999px;pointer-events:none}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.ico3d{height:1.25em;width:auto;vertical-align:-.28em;display:inline-block;pointer-events:none;-webkit-user-drag:none}
+.pic .ico3d{height:1.1em;vertical-align:middle}
+.acc .ico3d{height:1em}
 </style>
 
 <div class="stage" id="app" aria-live="polite"></div>
@@ -762,9 +765,23 @@ function makeMonster(zi,big,keeper){const T=THREE,s=SPR[zi]||{};
  for(const x of[-.15,.15]){const e=new T.Mesh(new T.SphereGeometry(.11*k,14,10),M('#ffffff'));e.position.set(x*k,.5*k,.36*k);g.add(e)}
  return g}
 
+// ---------- 3D picture icons (icons/<key>.png, rendered from models/icons.glb by tools/blender/render_icons.js) ----------
+// Object emoji in the page are swapped for these pictures as they appear; UI symbols (hearts, stars, ticks, speaker) are left alone.
+const ICONS={"🛏": "bed", "🛋": "sofa", "🐭": "mouse", "🐐": "goat", "🐴": "horse", "🐔": "chicken", "🪑": "chair", "🍳": "kitchen", "🫏": "donkey", "🌳": "yard", "🛁": "bath", "👨": "dad", "🧢": "cap", "🍽": "dining", "🪞": "mirror", "🐑": "sheep", "🤫": "quiet", "🎁": "gift", "👵": "grandma", "🚪": "door", "🗄": "closet", "📚": "bookcase", "👩": "mom", "🐦": "bird", "📢": "noisy", "🍎": "apple", "🍌": "banana", "⬇🪜": "down", "⬆🪜": "up", "🪜": "stairs", "👴": "grandpa", "🟫": "floor", "🧱": "wall", "🖼": "picture", "🎂": "cake", "🟤": "dirty", "🫧": "clean", "🐱": "cat", "🐥": "chick", "🦉": "owl", "🍐": "pear", "🍑": "peach", "🍋": "lemon", "🍍": "pineapple", "🍉": "watermelon", "🐶": "dog", "🏠": "house", "🎀": "bow", "👑": "crown", "🎈": "balloon", "🥭": "mango", "⚽": "ball", "🧸": "teddy", "📕": "book", "✈": "plane", "👦": "boy", "🍓": "strawberry", "👧": "girl", "🐝": "bee", "🌼": "flower", "🎩": "tophat", "🐰": "bunny", "🦄": "unicorn", "🐄": "cow"};
+const ICON_RE=new RegExp(Object.keys(ICONS).sort((a,b)=>b.length-a.length).map(k=>[...k].join('\\uFE0F?')+'\\uFE0F?').join('|'),'gu');
+function iconKey(e){return ICONS[e.replace(/\uFE0F/g,'')]}
+function iconImg(e){const k=iconKey(e);return k?'icons/'+k+'.png':null}
+(function iconSwap(){const SKIP={SCRIPT:1,STYLE:1,TEXTAREA:1,INPUT:1,OPTION:1,TITLE:1};
+ function swapText(t){const v=t.nodeValue;ICON_RE.lastIndex=0;if(!v||!ICON_RE.test(v))return;const p=t.parentNode;if(!p||SKIP[p.nodeName])return;
+  const f=document.createDocumentFragment();let last=0;v.replace(ICON_RE,(m,i)=>{if(i>last)f.appendChild(document.createTextNode(v.slice(last,i)));
+   const im=document.createElement('img');im.className='ico3d';im.src=iconImg(m);im.alt=m;im.draggable=false;im.onerror=()=>im.replaceWith(m);f.appendChild(im);last=i+m.length;return m});
+  if(last<v.length)f.appendChild(document.createTextNode(v.slice(last)));p.replaceChild(f,t)}
+ function walk(n){if(n.nodeType===3)return swapText(n);if(n.nodeType!==1||SKIP[n.nodeName])return;const w=document.createTreeWalker(n,NodeFilter.SHOW_TEXT),a=[];while(w.nextNode())a.push(w.currentNode);a.forEach(swapText)}
+ const go=()=>{walk(document.body);new MutationObserver(ms=>ms.forEach(m=>{if(m.type==='characterData')swapText(m.target);else m.addedNodes.forEach(walk)})).observe(document.body,{childList:true,subtree:true,characterData:true})};
+ document.body?go():addEventListener('DOMContentLoaded',go)})();
 // ---------- Blender models (GLB, made by tools/blender/*.py) ----------
 // A monster listed here is drawn in 3D; if its file is missing or fails to load, the PNG sprite is used as before.
-const MODELS={};['m11-dust','m12-sock','m13-cushion','m14-balloon','m21-hay','m22-sheep','m23-mud','m24-fruit','hero-boy','hero-girl','pip'].forEach(n=>MODELS[n]='models/'+n+'.glb');
+const MODELS={};['m11-dust','m12-sock','m13-cushion','m14-balloon','m21-hay','m22-sheep','m23-mud','m24-fruit','hero-boy','hero-girl','pip','icons'].forEach(n=>MODELS[n]='models/'+n+'.glb');
 const GLB={};
 (function loadModels(){if(!window.THREE||!THREE.GLTFLoader)return;const L=new THREE.GLTFLoader();
  Object.entries(MODELS).forEach(([k,u])=>L.load(u,g=>{
@@ -1495,12 +1512,16 @@ const STORY=[
 ];
 // island friends: one per stage, asks a question with three answers to choose from
 const NPCS=[{e:'👴',name:'Grandpa'},{e:'👵',name:'Grandma'},{e:'👨',name:'Dad'},{e:'👧',name:'Little Sister'},{e:'🐴',name:'Little Pony'},{e:'🐑',name:'Lamb'},{e:'🐥',name:'Duckling'},{e:'🐝',name:'Bee'}];
-function emojiSprite(e,size){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.font='96px "Apple Color Emoji","Noto Color Emoji","Segoe UI Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(e,64,72);
+function iconModel(e,h){const g0=GLB.icons,k=iconKey(e);if(!g0||!k)return null;const o=g0.scene.getObjectByName(k);if(!o)return null;const T=THREE;
+ const c=o.clone(true);c.position.set(0,0,0);const b=new T.Box3().setFromObject(c),sz=b.getSize(new T.Vector3());c.scale.setScalar(h/Math.max(sz.y,sz.x*.8));
+ const g=new T.Group();g.add(c);const b2=new T.Box3().setFromObject(g);c.position.y=-b2.min.y;return g}
+function emojiSprite(e,size){const png=iconImg(e);if(png){const t=new THREE.TextureLoader().load(png);const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true}));sp.scale.set(size,size,1);return sp}
+ const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.font='96px "Apple Color Emoji","Noto Color Emoji","Segoe UI Emoji",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(e,64,72);
  const t=new THREE.CanvasTexture(c);const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true}));sp.scale.set(size,size,1);return sp}
 function addNpc(sc,anim,zi){const n=NPCS[zi];if(!n)return null;const T=THREE,g=new T.Group(),z0=7.2;g.position.set(pathX(z0)-2.3,.3,z0);
- const sp=emojiSprite(n.e,1.5);sp.position.y=.85;g.add(sp);
+ const m3=iconModel(n.e,1.25);let sp,y0;if(m3){m3.rotation.y=-.5;sp=m3;y0=.05}else{sp=emojiSprite(n.e,1.5);y0=.85}sp.position.y=y0;g.add(sp);
  const ring=new T.Mesh(new T.RingGeometry(.5,.64,28),new T.MeshBasicMaterial({color:'#ffd84a',transparent:true,opacity:.85,side:T.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.y=.05;g.add(ring);sc.add(g);
- const o={g,done:false,n};anim.push(t=>{sp.position.y=.85+Math.abs(Math.sin(t*2))*.12;ring.visible=!o.done;ring.scale.setScalar(1+.08*Math.sin(t*4))});return o}
+ const o={g,done:false,n};anim.push(t=>{sp.position.y=y0+Math.abs(Math.sin(t*2))*.12;if(m3)m3.rotation.y=-.5+Math.sin(t*.8)*.35;ring.visible=!o.done;ring.scale.setScalar(1+.08*Math.sin(t*4))});return o}
 function talkNpc(o){P.lock=true;const zi=P.zi,z=ZONES[zi],n=o.n,L=SENT[zi]||[];
  const g=pickSent(zi),others=shuffle(L.filter(x=>x.a!==g.a&&x.q!==g.q)).slice(0,2),opts=shuffle([g,...others]);
  const back=()=>{o.done=true;arena(zi)};

@@ -1,0 +1,26 @@
+<!doctype html><html><body style="margin:0"><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script><script src="../../lib/GLTFLoader.js"></script><script>
+// Renders every top-level node of icons.glb to a transparent square PNG (window.out = {name: dataURL}).
+const S=+(new URLSearchParams(location.search).get('s')||256),only=new URLSearchParams(location.search).get('only');
+const r=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});r.setSize(S,S);r.setClearColor(0,0);
+r.shadowMap.enabled=true;document.body.appendChild(r.domElement);
+new THREE.GLTFLoader().load('icons.glb',g=>{const out={};
+ const kids=[...g.scene.children];
+ kids.forEach(o=>{if(only&&!only.split(',').includes(o.name))return;
+  const sc=new THREE.Scene();sc.add(new THREE.HemisphereLight(0xffffff,0x998877,.75));
+  const d=new THREE.DirectionalLight(0xfff4e6,.75);d.position.set(-2.5,5,4);sc.add(d);
+  const f=new THREE.DirectionalLight(0xddeeff,.25);f.position.set(3,1,2);sc.add(f);
+  o.traverse(m=>{if(m.isMesh){(Array.isArray(m.material)?m.material:[m.material]).forEach(mt=>{if(mt.color&&!mt.userData.cv){mt.userData.cv=1;mt.color.convertLinearToSRGB()}})}});
+  const piv=new THREE.Group();o.position.set(0,0,0);piv.add(o);piv.rotation.y=-.45;sc.add(piv);
+  piv.updateMatrixWorld(true);
+  const cam=new THREE.PerspectiveCamera(26,1,.01,100);const el=.32;
+  const b=new THREE.Box3().setFromObject(piv),c=b.getCenter(new THREE.Vector3()),sz=b.getSize(new THREE.Vector3());
+  const rad=Math.max(sz.x,sz.y,sz.z)*.5*1.15;const dist=rad/Math.tan(13*Math.PI/180)*1.05;
+  cam.position.set(c.x,c.y+Math.sin(el)*dist,c.z+Math.cos(el)*dist);cam.lookAt(c);cam.updateMatrixWorld();
+  // tighten: project bbox corners, rescale so the object fills ~88%
+  const pts=[];for(let i=0;i<8;i++)pts.push(new THREE.Vector3(i&1?b.max.x:b.min.x,i&2?b.max.y:b.min.y,i&4?b.max.z:b.min.z).project(cam));
+  let mx=0,cx=0,cy=0;const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y);cx=(Math.min(...xs)+Math.max(...xs))/2;cy=(Math.min(...ys)+Math.max(...ys))/2;
+  mx=Math.max(Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys))/2;
+  cam.setViewOffset(S,S,cx*S/2,-cy*S/2,S,S);cam.zoom=.9/mx;cam.updateProjectionMatrix();
+  r.render(sc,cam);out[o.name]=r.domElement.toDataURL('image/png');});
+ window.out=out;window.done=1},undefined,e=>{console.log('fail',e);window.done=1});
+</script></body></html>
