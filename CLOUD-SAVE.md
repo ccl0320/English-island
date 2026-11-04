@@ -39,4 +39,5 @@ const CLOUD={apiKey:'AIza...你的apiKey',projectId:'english-island-xxxx'};
 - 之後每次存檔約 2 秒後自動上傳；離線時先存在裝置，連上網路後自動補傳。
 - 開遊戲時會自動抓雲端較新的進度。
 - 登出會清除這台裝置上的進度（雲端仍保留），適合教室共用平板。
-- 帳號名稱在系統裡會變成 `名稱@players.english-island.app`（不會寄信）。忘記密碼時：Firebase →  Authentication → 使用者，找到該帳號 → 「重設密碼」無法寄信，請改用「刪除帳號」後重建，或在選單裡直接編輯密碼。
+- 帳號名稱在系統裡會變成 `名稱@players.english-island.app`（不會寄信，所以沒有「忘記密碼」信件）。
+- 忘記密碼時：到 Firebase → Authentication → 使用者，刪除該帳號，再用同一個名稱和新密碼重建。在還留有進度的那台裝置上登入新帳號，進度就會自動搬進去。
