@@ -448,88 +448,112 @@ def m24_fruit():
 
 
 # ======================= heroes =======================
-HERO_BONES = [('root', (0, 0, 0), None), ('hips', (0, .42, 0), 'root'), ('torso', (0, .45, 0), 'hips'),
-              ('head', (0, .82, 0), 'torso'), ('cape', (0, .8, -.12), 'torso'),
-              ('arm_L', (-.2, .75, 0), 'torso'), ('arm_R', (.2, .75, 0), 'torso'),
-              ('leg_L', (-.09, .42, 0), 'hips'), ('leg_R', (.09, .42, 0), 'hips')]
+HERO_BONES = [('root', (0, 0, 0), None), ('hips', (0, .4, 0), 'root'), ('torso', (0, .43, 0), 'hips'),
+              ('head', (0, .72, 0), 'torso'), ('cape', (0, .74, -.08), 'torso'),
+              ('arm_L', (-.17, .67, 0), 'torso'), ('arm_R', (.17, .67, 0), 'torso'),
+              ('leg_L', (-.08, .4, 0), 'hips'), ('leg_R', (.08, .4, 0), 'hips')]
+
+
+def cut(o, keep):
+    """delete the faces of o whose centre (in game x, up, front numbers) fails keep(x, y, z)."""
+    bm = bmesh.new(); bm.from_mesh(o.data)
+    dead = []
+    for f in bm.faces:
+        c = f.calc_center_median()
+        if not keep(c.x, c.z, -c.y): dead.append(f)
+    bmesh.ops.delete(bm, geom=dead, context='FACES'); bm.to_mesh(o.data); bm.free()
+    for m in o.data.materials: m.use_backface_culling = False
+    return o
 
 
 def hero(kind):
+    """Amy / the boy hero, after Jerry's turnaround sheet (2026-11-04): red newsboy cap with a pom and two
+    side puffs, brown hair (low pigtails with red ties for the girl), yellow hooded capelet with a gold
+    brooch, blue tunic over a cream shirt, brown belt + gold buckle + pouch, beige shorts, chunky brown boots."""
     girl = kind == 'girl'
     M = Model('hero-' + kind); random.seed(7)
-    skin, hair = M.m('skin', '#F6D2B0', .7), M.m('hair', '#7A4A2A', .7)
-    blue, belt, gold = M.m('tunic', '#3E6FB0'), M.m('belt', '#7A4A2A', .6), M.m('gold', '#E8B93C', .4)
-    cape, red, boot = M.m('cape', '#F2C230'), M.m('cap', '#D9433E'), M.m('boot', '#8A5A33', .6)
-    shorts = M.m('shorts', '#E9D6B4')
-    # legs + boots
+    skin, hair = M.m('skin', '#F8D5B8', .7), M.m('hair', '#8B5634', .7)
+    blue, shirt, shorts = M.m('tunic', '#4A73B5'), M.m('shirt', '#F3E6CF'), M.m('shorts', '#E8D6B5')
+    belt, gold, pouch = M.m('belt', '#8A5230', .6), M.m('gold', '#E9B83A', .35), M.m('pouch', '#9A6037', .6)
+    cape, cape_d = M.m('cape', '#F3C33B'), M.m('cape_dark', '#E2AA26')
+    red, red_d, boot, boot_d = M.m('cap', '#E0473F'), M.m('cap_dark', '#C8382F'), M.m('boot', '#A0603A', .65), M.m('boot_dark', '#8A4E2D', .65)
+    # ---- boots + legs ----
     for sx, bn in ((-1, 'leg_L'), (1, 'leg_R')):
-        x = sx * .09
-        M.cyl('leg', .055, .2, (x, .3, 0), skin if girl else shorts, bn, 8)
-        M.lathe('boot', [(.0, 0), (.08, .0), (.085, .06), (.07, .18), (.075, .2), (0, .2)], boot, bn, 10, (x, 0, .0))
-        M.ball('toe', .075, (x, .045, .05), boot, bn, (1, .6, 1.3))
-    if not girl:
-        M.lathe('shorts', [(.13, .36), (.15, .42), (.14, .47), (0, .47)], shorts, 'hips', 14)
-    # tunic / dress
-    tun = [(.0, .45), (.15, .45), (.14, .55), (.13, .7), (.15, .78), (0, .82)] if not girl else \
-          [(.0, .35), (.2, .34), (.16, .5), (.13, .7), (.15, .78), (0, .82)]
-    M.lathe('tunic', tun, blue, 'torso', 16)
-    if girl:
-        M.lathe('hem', [(.205, .335), (.21, .36), (.19, .375)], gold, 'torso', 16, cap=False)
-    M.lathe('belt', [(.145, .53), (.15, .56), (.145, .59)], belt, 'torso', 16, cap=False)
-    M.rbox('buckle', (.08, .06, .03), (0, .56, .15), gold, 'torso', .01, 1)
-    M.tube('strap', [(-.14, .78, .06), (0, .66, .155), (.13, .53, .1)], .015, belt, 'torso', res=4, bev=1)
-    M.rbox('bag', (.08, .08, .05), (-.12, .5, .12), belt, 'torso', .015, 1)
-    # cape: back half of a cone
-    cp = M.lathe('cape_cloth', [(.36, .32), (.25, .55), (.16, .8), (.12, .84)], cape, 'cape', 18, cap=False)
-    bm = bmesh.new(); bm.from_mesh(cp.data)
-    bmesh.ops.delete(bm, geom=[f for f in bm.faces if -f.calc_center_median().y > -.02], context='FACES')
-    bm.to_mesh(cp.data); bm.free()
-    cp.data.materials[0].use_backface_culling = False
-    M.ball('collar', .06, (-.13, .8, .08), cape, 'torso'); M.ball('collar', .06, (.13, .8, .08), cape, 'torso')
-    # arms + hands
+        x = sx * .085
+        M.lathe('boot', [(0, 0), (.082, 0), (.09, .015), (.083, .1), (.08, .16)], boot, bn, 12, (x, 0, 0))
+        M.lathe('cuff', [(.08, .155), (.097, .16), (.098, .215), (.075, .22), (0, .22)], boot_d, bn, 12, (x, 0, 0))
+        M.ball('toe', .078, (x, .045, .06), boot, bn, (1.08, .65, 1.35))
+        M.lathe('sole', [(0, -.005), (.08, -.005), (.085, .012), (0, .012)], boot_d, bn, 12, (x, 0, .02))
+        M.cyl('leg', .05, .14, (x, .28, 0), skin, bn, 10)
+        M.lathe('shortleg', [(.07, .29), (.075, .3), (.075, .4)], shorts, bn, 12, (x, 0, 0), cap=False)
+    M.lathe('shorts', [(.15, .32), (.165, .38), (.16, .44), (0, .45)], shorts, 'hips', 16)
+    # ---- tunic, belt, pouch ----
+    M.lathe('tunic', [(0, .37), (.2, .37), (.2, .4), (.17, .5), (.145, .62), (.14, .68), (.1, .72), (0, .73)], blue, 'torso', 18)
+    M.lathe('belt', [(.166, .455), (.172, .47), (.168, .5), (.162, .515)], belt, 'torso', 18, cap=False)
+    M.rbox('buckle', (.07, .055, .025), (0, .487, .172), gold, 'torso', .008, 1)
+    M.rbox('buckle_in', (.04, .028, .02), (0, .487, .18), belt, 'torso', .005, 1)
+    M.rbox('pouch', (.075, .07, .045), (-.1, .43, .165), pouch, 'torso', .015, 2)
+    M.rbox('flap', (.08, .03, .05), (-.1, .462, .17), belt, 'torso', .01, 1)
+    M.ball('stud', .01, (-.1, .45, .195), gold, 'torso')
+    # ---- capelet: flared cone over the shoulders, open at the chest, with a hood roll and a brooch ----
+    cp = M.lathe('cape_cloth', [(.11, .75), (.17, .72), (.23, .64), (.27, .52), (.29, .43)], cape, 'cape', 22, cap=False)
+    cut(cp, lambda x, y, z: not (z > .05 and abs(x) < .08 + (.74 - y) * .55))
+    hood = M.ball('hood', .2, (0, .74, -.06), cape_d, 'cape', (1.0, .38, .95))
+    M.lathe('brooch', [(0, 0), (.032, 0), (.036, .012), (0, .02)], gold, 'torso', 12, (.085, .69, .14), 'z')
+    # ---- arms: cream sleeves, skin hands ----
     for sx, bn in ((-1, 'arm_L'), (1, 'arm_R')):
-        x = sx * .215
-        M.lathe('sleeve', [(.05, .0), (.06, .2), (.05, .22)], blue, bn, 8, (x, .54, 0))
-        M.ball('hand', .055, (x, .5, .01), skin, bn)
-    # weapon in right hand
+        x = sx * .19
+        M.lathe('sleeve', [(.042, .5), (.05, .52), (.05, .64), (.045, .68), (0, .7)], shirt, bn, 10, (x, 0, 0))
+        M.ball('shoulder', .055, (x * .95, .67, 0), shirt, bn)
+        M.ball('hand', .048, (x, .47, .005), skin, bn, (.95, 1.1, .95))
     if girl:
-        M.cyl('wand', .018, .34, (.215, .58, .05), M.m('wood', '#C68A4E'), 'arm_R', 6)
-        star = [(math.cos(TAU * i / 10 + math.pi / 2) * (.11 if i % 2 == 0 else .05), math.sin(TAU * i / 10 + math.pi / 2) * (.11 if i % 2 == 0 else .05)) for i in range(10)]
-        M.flat('star', star, .04, (.215, .8, .05), gold, 'arm_R')
+        M.cyl('wand', .014, .3, (.19, .55, .05), M.m('wood', '#C68A4E'), 'arm_R', 6)
+        star = [(math.cos(TAU * i / 10 + math.pi / 2) * (.1 if i % 2 == 0 else .045), math.sin(TAU * i / 10 + math.pi / 2) * (.1 if i % 2 == 0 else .045)) for i in range(10)]
+        M.flat('star', star, .035, (.19, .74, .05), gold, 'arm_R')
     else:
-        wood = M.m('wood', '#D19A5E')
-        M.rbox('blade', (.07, .36, .025), (.215, .74, .05), wood, 'arm_R', .02, 1)
-        M.rbox('guard', (.16, .03, .04), (.215, .55, .05), M.m('wood_dark', '#9B6534'), 'arm_R', .01, 1)
-        M.cyl('grip', .02, .09, (.215, .5, .05), M.m('wood_dark', '#9B6534'), 'arm_R', 6)
-    # head
-    hy = 1.08
-    head = M.ball('head', .3, (0, hy, 0), skin, 'head', (1, .95, .95), sub=3)
-    hb = M.ball('hairback', .315, (0, hy + .03, -.025), hair, 'head', (1, .97, .97), sub=3)
-    bm = bmesh.new(); bm.from_mesh(hb.data)
-    bmesh.ops.delete(bm, geom=[f for f in bm.faces if (-f.calc_center_median().y > .1 and f.calc_center_median().z < hy + .17)], context='FACES')
-    bm.to_mesh(hb.data); bm.free(); hb.data.materials[0].use_backface_culling = False
-    for i, x in enumerate((-.19, -.09, .02, .13, .21)):  # fringe
-        M.ball('fringe%d' % i, .085, (x, hy + .16 - abs(x) * .25, .22 - abs(x) * .3), hair, 'head', (1, .8, .8))
-    for sx in (-1, 1):  # side hair
-        M.ball('side', .1, (sx * .27, hy - .06, .02), hair, 'head', (.6, 1.3, .9))
-    if girl:
-        for sx in (-1, 1):
-            M.ball('tail', .11, (sx * .36, hy - .12, -.05), hair, 'head', (.9, 1.2, .9))
-            M.ball('tie', .045, (sx * .31, hy - .02, -.04), red, 'head')
-    # cap: beanie + brim + knob
-    M.ball('cap', .33, (0, hy + .1, -.02), red, 'head', (1.02, .7, 1.0), sub=3)
-    M.lathe('brim', [(0, 0), (.2, 0), (.21, .025), (0, .03)], M.m('cap_dark', '#C23A36'), 'head', 14, (.02, hy + .16, .2))
-    M.ball('knob', .07, (0, hy + .32, -.05), red, 'head')
-    # face
-    fz = M.surface(head)
-    E, W = M.m('eye', '#2A1A14', .3), M.m('white', '#FFFFFF', .4)
+        wood, wood_d = M.m('wood', '#D19A5E'), M.m('wood_dark', '#9B6534')
+        M.rbox('blade', (.06, .32, .022), (.19, .68, .05), wood, 'arm_R', .02, 1)
+        M.rbox('guard', (.14, .028, .036), (.19, .51, .05), wood_d, 'arm_R', .01, 1)
+        M.cyl('grip', .018, .08, (.19, .465, .05), wood_d, 'arm_R', 6)
+    # ---- head ----
+    hy = 1.0
+    head = M.ball('head', .29, (0, hy, 0), skin, 'head', (1.06, .96, .97), sub=3)
     for sx in (-1, 1):
-        x = sx * .11
-        M.ball('eye', .072, (x, hy - .01, fz(x, hy - .01) - .022), E, 'head', (1, 1.35, .5))
-        M.ball('glint', .026, (x + .022, hy + .035, fz(x, hy - .01) + .006), W, 'head', (1, 1, .5))
-        M.ball('cheek', .05, (sx * .2, hy - .1, fz(sx * .2, hy - .1) - .008), M.m('cheek', '#FF9C9C', .9), 'head', (1, .6, .3))
-        M.tube('brow', [(x - .04, hy + .1, fz(x - .04, hy + .1) - .003), (x + .04, hy + .11, fz(x + .04, hy + .11) - .003)], .012, hair, 'head', res=1, bev=1)
-    M.ball('mouth', .05, (0, hy - .14, fz(0, hy - .14) - .012), M.m('mouth', '#C2405A', .6), 'head', (1.2, .8, .4))
+        M.ball('ear', .055, (sx * .3, hy - .01, 0), skin, 'head', (.5, 1, .8))
+    hb = M.ball('hairback', .305, (0, hy + .02, -.02), hair, 'head', (1.08, .98, 1.0), sub=3)
+    cut(hb, lambda x, y, z: not (z > .02 and y < hy + .14) and not (abs(x) > .24 and y < hy - .02 and z > -.05))
+    # side-swept fringe: big sweep from the left, small tuft on the right
+    for i, (x, y, z, r) in enumerate([(-.17, hy + .14, .2, .1), (-.06, hy + .17, .23, .1), (.06, hy + .16, .23, .09), (.17, hy + .12, .2, .08)]):
+        M.ball('fringe%d' % i, r, (x, y, z), hair, 'head', (1.2, .7, .7))
+    for sx in (-1, 1):  # hair framing the face, in front of the ears
+        M.ball('side', .07, (sx * .275, hy - .02, .04), hair, 'head', (.5, 1.2, .8))
+    if girl:
+        for sx in (-1, 1):  # low pigtails, two lobes each, red ties
+            M.ball('tie', .038, (sx * .27, hy - .13, -.1), red, 'head', (1, 1, 1))
+            M.ball('tail', .095, (sx * .33, hy - .19, -.1), hair, 'head', (.95, .85, .95))
+            M.ball('tail2', .08, (sx * .38, hy - .26, -.08), hair, 'head', (.9, .85, .9))
+    # ---- newsboy cap ----
+    M.ball('cap', .33, (0, hy + .17, -.03), red, 'head', (1.06, .7, 1.04), sub=3)
+    M.lathe('band', [(.3, hy + .07), (.315, hy + .085), (.31, hy + .11)], red_d, 'head', 22, cap=False)
+    brim = M.ball('brim', .21, (0, hy + .1, .2), red_d, 'head', (1.05, .16, .7), sub=3)
+    cut(brim, lambda x, y, z: z > .2)
+    M.ball('pom', .07, (0, hy + .4, -.04), red, 'head')
+    for sx in (-1, 1):
+        M.ball('puff', .085, (sx * .26, hy + .3, -.03), red, 'head', (1, .9, 1))
+    # ---- face ----
+    fz = M.surface(head)
+    E, W = M.m('eye', '#3B2416', .3), M.m('white', '#FFFFFF', .4)
+    for sx in (-1, 1):
+        x = sx * .115; ey = hy - .02
+        M.ball('eye', .072, (x, ey, fz(x, ey) - .022), E, 'head', (1, 1.3, .5))
+        M.ball('iris', .045, (x, ey - .022, fz(x, ey) - .002), M.m('iris', '#7A4A2A', .3), 'head', (1, 1, .4))
+        M.ball('glint', .024, (x + .02, ey + .03, fz(x, ey) + .007), W, 'head', (1, 1, .5))
+        M.ball('glint2', .011, (x - .02, ey - .035, fz(x, ey) + .004), W, 'head', (1, 1, .5))
+        M.ball('cheek', .048, (sx * .2, hy - .1, fz(sx * .2, hy - .1) - .008), M.m('cheek', '#FF9E9E', .9), 'head', (1, .6, .3))
+        M.tube('brow', [(x - .035, hy + .085, fz(x - .035, hy + .085) - .002), (x + .035, hy + .095, fz(x + .035, hy + .095) - .002)], .01, hair, 'head', res=1, bev=1)
+    M.ball('mouth', .055, (0, hy - .13, fz(0, hy - .13) - .018), M.m('mouth', '#B5323F', .6), 'head', (1.15, .75, .4))
+    M.ball('tongue', .03, (0, hy - .148, fz(0, hy - .148) - .006), M.m('tongue', '#F07C86', .6), 'head', (1.2, .6, .35))
+    M.ball('nose', .014, (0, hy - .06, fz(0, hy - .06) - .002), M.m('nose', '#F2B796', .7), 'head')
     M.rig(HERO_BONES)
     hero_clips(M)
     return M
