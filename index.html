@@ -145,6 +145,26 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pip);outline-of
 .timer.low i{background:linear-gradient(90deg,#E5484D,#F08C2E)}
 .timer.low b{color:#fff}
 .kline{font-weight:700;color:var(--fog-deep);text-align:center;font-style:italic}
+.skills{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.skill{border-radius:999px;padding:5px 14px;background:#FFF6D6;border:2px solid #E8C02A;font-family:var(--display);font-size:.95rem;color:var(--ink)}
+.skill b{display:inline-block;min-width:1.4em;margin-left:4px;background:#E8C02A;color:#fff;border-radius:999px}
+.skill.egg{background:#FDEFE4;border-color:#E89A5A}.skill.egg b{background:#E89A5A}
+.skill:disabled{opacity:.4}
+.skill.pop{animation:skpop .5s}
+@keyframes skpop{50%{transform:scale(1.15)}}
+#deck.fog .card{filter:blur(7px);color:#9aa3aa;background:#e7ebef}
+#deck.fog{position:relative}
+#deck.fog::after{content:'☁️ ☁️ ☁️';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2.4rem;pointer-events:none;animation:fogd 2s ease-in-out infinite alternate}
+@keyframes fogd{to{transform:translateX(14px)}}
+.q.hidq{color:var(--fog-deep);font-family:var(--display)}
+.phase{display:inline-block;background:#5B4B8A;color:#fff;border-radius:999px;padding:2px 10px;font-size:.8rem;margin-left:6px}
+.diary{background:#EDEAE4;border:2px dashed #9A93A6;border-radius:14px;padding:12px 16px;text-align:center;max-width:560px;margin:0 auto;transform:rotate(-1deg)}
+.diary .dtag{font-family:var(--display);color:#5B4B8A;font-size:.9rem}
+.diary .en{display:block;font-family:var(--word);font-size:1.3rem;margin:6px 0;color:#3d3a45}
+.diary .zh{display:block;font-size:.85rem;color:#77707f}
+.diary.new{animation:dnew .8s}
+@keyframes dnew{from{transform:rotate(-12deg) scale(.6);opacity:0}}
+.diaries{display:grid;gap:12px}
 .book{display:flex;flex-direction:column;gap:10px;align-items:center;position:relative}
 .bkframe{position:relative;width:100%;aspect-ratio:3/2;border-radius:18px;overflow:hidden;background:#e9dcc8;touch-action:pan-y}
 .bkpic{position:absolute;inset:0;background:#cfe9f7 center/cover no-repeat}
@@ -341,6 +361,7 @@ const unitDone=u=>u.subs.length>0&&u.subs.every(i=>i<S.cleared);
 const CVC_DISTRACT='abcdefghijklmnoprstuvwy';
 let S={name:'',cleared:0,dex:[]};
 try{const s=JSON.parse(localStorage.getItem('rq-save')||'null');if(s&&typeof s.cleared==='number')S=s}catch(e){}
+if(!S.diary)S.diary=[...Array(Math.min(S.cleared||0,8)).keys()];
 function save(){try{localStorage.setItem('rq-save',JSON.stringify(S))}catch(e){}}
 const app=document.getElementById('app');
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
@@ -409,15 +430,17 @@ function clear(zi){
  const stars=run?(run.miss<=2?3:run.miss<=6?2:1):0;if(stars){S.stars=S.stars||{};S.stars[zi]=Math.max(S.stars[zi]||0,stars);save()}
  const z=ZONES[zi],ui=unitOf(zi),u=UNITS[ui];
  if(S.cleared===zi){S.cleared=zi+1;save()}
+ const dNew=!(S.diary||[]).includes(zi)&&!!DIARY[zi];if(dNew){S.diary=[...(S.diary||[]),zi];save()}
  const unitEnd=u.subs[u.subs.length-1]===zi;
  const k=u.subs.indexOf(zi)+1;
  app.innerHTML=hud(z)+`<div class="panel arena" style="background:${unitEnd?u.color:z.color};color:#fff">
   <h2 style="font-size:2rem">Crystal shard ${k} / 4${unitEnd?'<br>You made '+esc(u.crystal)+'! Island '+(ui+1)+' clear!':''}</h2>
   ${run?`<div class="result"><div class="stars" aria-label="${stars} stars">${[1,2,3].map(i=>`<i class="${i<=stars?'on':''}" style="animation-delay:${i*.3}s">★</i>`).join('')}</div><div class="stats"><span>✏️ ${run.words} words spelled</span><span>📝 ${run.sents} sentences</span><span>🔥 Best combo ${run.best}</span><span>🪙 +${run.coins} coins</span></div><small>${stars<3?'Fewer mistakes, more stars! Play this stage again from the island map.':'Perfect! 3 stars!'}</small></div>`:''}</div>
+  ${diaryHtml(zi,dNew)}
   <div class="story">${PIP}<div class="bubble">${(STORY[zi]?STORY[zi].outro:[z.outro]).map(l=>`<span class="en" style="display:block">${esc(nameIn(l))}</span>`).join('')}</div></div>
   <div class="row"><button class="btn" id="go">Read the storybook!</button></div>`;
  speak(unitEnd?`You did it, ${S.name}!`:'Great job!');
- document.getElementById('go').onclick=()=>storybook(bookOf(zi),()=>unitEnd?map():unitMap(ui));
+ bindSay();document.getElementById('go').onclick=()=>storybook(bookOf(zi),()=>unitEnd?map():unitMap(ui));
 }
 // ---------- visual detail helpers ----------
 function skyTexture(){const c=document.createElement('canvas');c.width=4;c.height=256;const g=c.getContext('2d'),gr=g.createLinearGradient(0,0,0,256);
@@ -800,8 +823,8 @@ float g=pow(max(sin(vW.x*1.7+uTime*2.1)*sin(vW.z*1.9-uTime*1.6),0.0),26.0);c+=g*
 function arenaLeft(){return P.mons.filter(x=>x.alive).length}
 function nextMon(){return P.mons.find(x=>x.alive)}
 function arena(zi,fresh){
- const w=getWorld();if(!w){const z=ZONES[zi];return battle(zi,pickWords(z),0,{hearts:5,reward:30})}
- const isNew=fresh||!P||P.zi!==zi;if(isNew)P=buildArena(zi);
+ const w=getWorld();if(!w){resetSkills();const z=ZONES[zi];return battle(zi,pickWords(z),0,{hearts:5,reward:30})}
+ const isNew=fresh||!P||P.zi!==zi;if(isNew){P=buildArena(zi);resetSkills()}
  W.mode='arena';W.unit=P.ui;P.lock=false;P.target=null;P.follow=null;P.snap=isNew;P.grace=isNew?1.5:1.2;if(!W.dragged)W.yaw=0;
  const z=ZONES[zi];
  app.innerHTML=hud(z)+`<div class="hud"><span id="left"></span><span class="hearts">${'♥'.repeat(P.st.hearts)}${'♡'.repeat(5-P.st.hearts)}</span></div>
@@ -995,7 +1018,7 @@ function battle(zi,list,k,st){
   ${stageHtml(zi,{pic:mode==='listen'?'👂':pic,gloss:mode==='listen'?'Listen!':gloss,size,chest:st.chest,foeHp:hpNow,heroHp:st.hearts/5})}
   <div class="qmode m-${mode}">${mode==='fill'?'✏️ Missing letters':mode==='scramble'?'🔀 Mixed-up letters':'👂 Listen and spell'}</div>
   <div class="slots ${letters.length>6?'long':''}" id="slots">${letters.map((c,i)=>need.includes(i)?`<div class="slot" data-i="${i}"></div>`:`<div class="slot fixed">${c===' '?'&nbsp;':esc(c)}</div>`).join('')}</div>
-  <div class="timer" id="timer" aria-label="time left"></div>
+  ${skillsHtml()}<div class="timer" id="timer" aria-label="time left"></div>
   <div class="hint" id="hint">${st.chest?'Listen and spell the whole word to open the lock!':mode==='scramble'?'The letters are mixed up! Put them in order to attack!':mode==='listen'?'No picture this time! Listen carefully and spell the word.':'Listen and tap the missing letters in order. Spell the whole word to attack!'}</div>
   <div class="tiles" id="tiles">${pool.map((c,i)=>`<button class="tile" data-c="${c}" data-k="${i}" aria-label="letter ${c}">${c}</button>`).join('')}</div>
   <button class="say" id="say">Listen</button></div>`;
@@ -1003,8 +1026,9 @@ function battle(zi,list,k,st){
  speak(word);
  document.getElementById('say').onclick=()=>speak(word);
  const setHearts=()=>{app.querySelector('.hearts').textContent='♥'.repeat(st.hearts)+'♡'.repeat(5-st.hearts);const h=document.getElementById('herohp');if(h)h.style.width=(st.hearts/5*100)+'%'};
- const hurt=msg=>{FX.foe();st.hearts=Math.max(0,st.hearts-1);setHearts();hint.textContent=msg;if(st.hearts===0){st.hearts=5;setTimeout(()=>{hint.textContent=S.cleared>=8?'Henny laid an egg! Your hearts are full! Try again!':'Pip filled your hearts again! Try again!';setHearts()},900)}};
+ const hurt=msg=>{FX.foe();st.hearts=Math.max(0,st.hearts-1);setHearts();hint.textContent=msg;if(st.hearts===0){st.hearts=5;setTimeout(()=>{hint.textContent='Pip filled your hearts again! Try again!';setHearts()},900)}};
  const tm=battleTimer(10,()=>{hurt(st.chest?"Time's up! The lock shuts. Try again!":"Time's up! The monster attacks!");speak(word)});
+ bindSkills(()=>()=>{if(pos>=need.length)return false;const want=letters[need[pos]];const t=[...app.querySelectorAll('.tile:not(.used)')].find(x=>x.dataset.c===want);if(!t)return false;t.click();if(pos<need.length)hint.textContent='Pip: "Hoo! This letter is '+want.toUpperCase()+'!"';return true},st);
  app.querySelectorAll('.tile').forEach(t=>t.onclick=()=>{
   if(pos>=need.length)return;
   const want=letters[need[pos]];
@@ -1036,11 +1060,12 @@ function battle(zi,list,k,st){
   document.getElementById('nx').onclick=()=>st.onWin?st.onWin():gate(zi,0);
  }
 }
+const PHASE=[null,{line:"Fog, fog, fog! Now you can't see!",tag:'Phase 2 · Fog'},{line:"Can you hear me? Listen!",tag:'Phase 3 · Listen'}];
 function gate(zi,qi){
- const z=ZONES[zi],g=z.gate[qi],gs=(P&&P.st)||{hearts:5},SL=STORY[zi]||{};
- sentQ(zi,g,{st:gs,keeper:true,label:'BOSS: '+z.keeper,dots:`<span class="dots">${z.gate.map((x,i)=>`<i class="${i<qi?'on':''}"></i>`).join('')}</span>`,
-  foeHp:(z.gate.length-qi)/z.gate.length,say:qi===0&&SL.kOpen?nameIn(SL.kOpen)+' '+g.q:g.q,
-  kline:qi===0&&STORY[zi]?`<div class="kline">${esc(z.keeper)}: "${esc(nameIn(STORY[zi].kOpen))}"</div>`:'',
+ const z=ZONES[zi],g=z.gate[qi],gs=(P&&P.st)||{hearts:5},SL=STORY[zi]||{},ph=PHASE[qi];
+ sentQ(zi,g,{st:gs,keeper:true,label:'BOSS: '+z.keeper,fog:qi===1,hideQ:qi===2,dots:`<span class="dots">${z.gate.map((x,i)=>`<i class="${i<qi?'on':''}"></i>`).join('')}</span>`,
+  foeHp:(z.gate.length-qi)/z.gate.length,say:qi===0&&SL.kOpen?nameIn(SL.kOpen)+' '+g.q:ph?ph.line+' '+g.q:g.q,
+  kline:qi===0&&STORY[zi]?`<div class="kline">${esc(z.keeper)}: "${esc(nameIn(STORY[zi].kOpen))}"</div>`:ph?`<div class="kline">${esc(z.keeper)}: "${esc(ph.line)}" <span class="phase">${ph.tag}</span></div>`:'',
   onRight:hint=>{
    const ans=nameIn(g.a);FX.hero();document.getElementById('foehp').style.width=((z.gate.length-qi-1)/z.gate.length*100)+'%';
    const last=qi+1>=z.gate.length;if(last){setTimeout(()=>FX.purify(zi,true),500);setTimeout(()=>addCoins(50),800)}
@@ -1131,6 +1156,15 @@ function tokens(ans){const out=[];ans.split(' ').forEach(t=>{const m=t.match(/^(
 const isMark=p=>/^[.?!]+$/.test(p);
 const heartsTxt=st=>'♥'.repeat(st.hearts)+'♡'.repeat(5-st.hearts);
 let MISSN=0,COMBO=0,QN=0;
+// companion skills: Pip's hint (3 per stage) and Henny's egg (once per stage, after Henny joins)
+let SK={pip:3,egg:1};const resetSkills=()=>{SK={pip:3,egg:1}};
+const hasHenny=()=>S.cleared>=8;
+function skillsHtml(){return `<div class="skills" id="skills"><button class="skill" id="skpip" ${SK.pip?'':'disabled'} aria-label="Pip's hint">🦉 Pip's hint <b>${SK.pip}</b></button>${hasHenny()?`<button class="skill egg" id="skegg" ${SK.egg?'':'disabled'} aria-label="Henny's egg">🥚 Henny's egg <b>${SK.egg}</b></button>`:''}</div>`}
+function updHearts(st){app.querySelectorAll('.panel .hearts').forEach(h=>h.textContent=heartsTxt(st));const h=document.getElementById('herohp');if(h)h.style.width=(st.hearts/5*100)+'%'}
+function bindSkills(getHint,st){const pb=document.getElementById('skpip'),eb=document.getElementById('skegg');
+ if(pb)pb.onclick=()=>{if(SK.pip<=0)return;const f=getHint();if(f&&f()){SK.pip--;pb.querySelector('b').textContent=SK.pip;pb.disabled=!SK.pip;pb.classList.remove('pop');void pb.offsetWidth;pb.classList.add('pop');if(P&&P.run)P.run.pip=(P.run.pip||0)+1}};
+ if(eb)eb.onclick=()=>{if(SK.egg<=0)return;if(st.hearts>=5){const h=document.getElementById('hint');if(h)h.textContent='Henny: "Your hearts are full! Save my egg for later."';return}
+  SK.egg--;st.hearts=5;updHearts(st);eb.querySelector('b').textContent=0;eb.disabled=true;const h=document.getElementById('hint');if(h)h.textContent='Henny: "Cluck! Eat my magic egg!" Your hearts are full!';speak('Cluck! Here is a magic egg!')}}
 function updCombo(){const b=document.getElementById('combo');if(!b)return;b.textContent=COMBO>1?'🔥 Combo x'+COMBO:'';b.classList.toggle('on',COMBO>1)}
 function comboHit(clean){if(!clean){COMBO=0;updCombo();return}COMBO++;if(P&&P.run)P.run.best=Math.max(P.run.best,COMBO);updCombo();
  if(COMBO>=3){const st=document.getElementById('bst');if(st){const c=document.createElement('div');c.className='crit';c.innerHTML='CRITICAL!<small>Combo x'+COMBO+' · +5 bonus coins</small>';st.appendChild(c);st.classList.remove('shake');void st.offsetWidth;st.classList.add('shake');setTimeout(()=>c.remove(),1500)}setTimeout(()=>addCoins(5),1000)}}
@@ -1158,25 +1192,30 @@ function sentQ(zi,g,o){
   <div class="hud" style="width:100%"><span>${esc(o.label||'')}</span>${o.dots||`<span class="hearts">${heartsTxt(st)}</span>`}</div>
   ${stageHtml(zi,{keeper:o.keeper,chest:o.chest,size:o.size||1,pic:g.pic,gloss:g.hint||'',foeHp:o.foeHp==null?1:o.foeHp,heroHp:st.hearts/5})}
   ${o.kline||''}
-  <div class="q">${esc(g.q)}</div>
+  <div class="q${o.hideQ?' hidq':''}" id="qtext">${o.hideQ?'👂 Listen to the question!':esc(g.q)}</div>
   <button class="say" id="say">Listen</button>
   <div class="answer" id="ans" aria-label="your sentence"></div>
-  <div class="timer" id="timer" aria-label="time left"></div>
-  <div class="hint" id="hint">${ki>=0?'Step 1: Put the cards in order. Step 2: Spell the magic word!':'Put the cards in order. The end mark ( . or ? ) is a card too!'}</div>
-  <div class="row" id="deck">${deck.map((d,i)=>`<button class="card${isMark(d.p)?' pc':''}" data-k="${i}">${esc(d.p)}</button>`).join('')}</div>
+  ${skillsHtml()}<div class="timer" id="timer" aria-label="time left"></div>
+  <div class="hint" id="hint">${o.fog?'The boss made fog! Tap Listen to blow it away!':o.hideQ?'No words this time! Listen to the boss, then answer.':ki>=0?'Step 1: Put the cards in order. Step 2: Spell the magic word!':'Put the cards in order. The end mark ( . or ? ) is a card too!'}</div>
+  <div class="row${o.fog?' fog':''}" id="deck">${deck.map((d,i)=>`<button class="card${isMark(d.p)?' pc':''}" data-k="${i}">${esc(d.p)}</button>`).join('')}</div>
   <div class="row" id="btns"><button class="btn soft" id="undo">Undo</button><button class="btn" id="ok">Answer</button></div></div>`;
  app.dataset.ans=parts.join('|');
  speak(o.say||g.q);
  const ansEl=document.getElementById('ans'),hint=document.getElementById('hint');
- document.getElementById('say').onclick=()=>speak(g.q);
+ let fogOn=!!o.fog;const clearFog=()=>{if(!fogOn)return;fogOn=false;const d=document.getElementById('deck');if(d)d.classList.remove('fog');hint.textContent='Whoosh! The fog is gone. Put the cards in order!';tm.reset()};
+ if(fogOn)setTimeout(clearFog,7000);
+ document.getElementById('say').onclick=()=>{speak(g.q);if(fogOn)setTimeout(clearFog,600)};
  const hurt=msg=>{FX.foe();st.hearts=Math.max(0,st.hearts-1);let refill=false;if(st.hearts===0){st.hearts=5;refill=true}
   const h=document.getElementById('herohp');if(h)h.style.width=(st.hearts/5*100)+'%';const hs=app.querySelector('.hud .hearts');if(hs)hs.textContent=heartsTxt(st);
   hint.textContent=refill?msg+' Pip filled your hearts!':msg};
- const tm=battleTimer(10,()=>{hurt(o.chest?"Time's up! The lock shuts. Try again!":"Time's up! The monster attacks!");speak(g.q)});
+ const tm=battleTimer(o.fog?17:10,()=>{hurt(o.chest?"Time's up! The lock shuts. Try again!":"Time's up! The monster attacks!");speak(g.q)});
  const render=()=>{ansEl.innerHTML=parts.map((p,i)=>built[i]!==undefined?`<span class="card${isMark(p)?' pc':''}">${esc(deck[built[i]].p)}</span>`:`<span class="aslot${isMark(p)?' pc':''}"></span>`).join('');
   app.querySelectorAll('#deck .card').forEach(b=>{const u=built.includes(+b.dataset.k);b.classList.toggle('used',u);b.style.visibility=u?'hidden':''})};
  render();
- app.querySelectorAll('#deck .card').forEach(b=>b.onclick=()=>{const k=+b.dataset.k;if(built.includes(k)||built.length>=parts.length)return;built.push(k);tm.reset();
+ let pipFn=()=>{clearFog();if(!built.every((k,i)=>deck[k].p===parts[i])){built=[];render()}if(built.length>=parts.length)return false;const want=parts[built.length];
+  const b=[...app.querySelectorAll('#deck .card')].find(x=>!built.includes(+x.dataset.k)&&deck[+x.dataset.k].p===want);if(!b)return false;b.click();hint.textContent=built.length<parts.length?'Pip: "Hoo! This card comes next!"':'Pip: "Now tap Answer!"';return true};
+ bindSkills(()=>pipFn,st);
+ app.querySelectorAll('#deck .card').forEach(b=>b.onclick=()=>{if(fogOn){hint.textContent='Too foggy! Tap Listen to blow the fog away!';return}const k=+b.dataset.k;if(built.includes(k)||built.length>=parts.length)return;built.push(k);tm.reset();
   const p=deck[k].p;if(isMark(p))speak(p==='?'?'question mark':p==='!'?'exclamation mark':'period',1);else speak(p.replace(/[,]/g,''),1);render()});
  document.getElementById('undo').onclick=()=>{built.pop();render()};
  document.getElementById('ok').onclick=()=>{
@@ -1200,6 +1239,7 @@ function sentQ(zi,g,o){
   document.getElementById('btns').innerHTML='<button class="btn soft" id="hearw">Hear the word</button>';document.getElementById('hearw').onclick=()=>speak(g.key);
   const dk=document.getElementById('deck');dk.className='tiles';dk.id='tiles';
   dk.innerHTML=pool.map((c,i)=>`<button class="tile" data-c="${c}" data-k="${i}" aria-label="letter ${c}">${c}</button>`).join('');
+  pipFn=()=>{if(pos>=need.length)return false;const want=letters[need[pos]];const t=[...dk.querySelectorAll('.tile:not(.used)')].find(x=>x.dataset.c===want);if(!t)return false;t.click();if(pos<need.length)hint.textContent='Pip: "Hoo! This letter is '+want.toUpperCase()+'!"';return true};
   dk.querySelectorAll('.tile').forEach(t=>t.onclick=()=>{
    if(pos>=need.length)return;const want=letters[need[pos]];
    if(t.dataset.c===want){speak(want,1);t.classList.add('used');const s=ansEl.querySelector(`.kslot[data-i="${need[pos]}"]`);s.textContent=want;s.classList.add('filled');pos++;miss=0;tm.reset();
@@ -1210,6 +1250,7 @@ function sentQ(zi,g,o){
   });
  }
  function win(){
+  if(o.hideQ){const qt=document.getElementById('qtext');if(qt){qt.textContent=g.q;qt.classList.remove('hidq')}}
   if(P&&P.run){P.run.sents++;if(ki>=0)P.run.words++}setTimeout(()=>comboHit(MISSN===q0),250);
   if(o.onRight)return o.onRight(hint);
   FX.hero();const fh=document.getElementById('foehp');if(fh)fh.style.width='0%';
@@ -1251,7 +1292,7 @@ function campItems(){
  const out=[];for(let i=0;i<3;i++){if(ws[i])out.push(ws[i]);if(ss[i])out.push(ss[i])}return out}
 function campCount(){const done=Math.min(S.cleared,ZONES.length);return(S.miss||[]).filter(m=>+m.split('|')[1]<done).length}
 function camp(){
- const items=campItems();if(!items.length)return map();
+ resetSkills();const items=campItems();if(!items.length)return map();
  const st={hearts:5};let i=0,got=0;
  const next=()=>{
   if(i>=items.length)return campEnd(got,items.length);
@@ -1283,6 +1324,24 @@ const STORY=[
  {intro:['The animals say mean words.','Say nice words!'],kOpen:'QUACK! You are small! You are dirty!',kWin:'Quack... Sorry. You are a big hero!',outro:['Duck King: The little hen is sad. She is in the henhouse.']},
  {intro:['Apples grow here. But they are grey!'],kOpen:"Go away. I'm grey. I'm small.",kWin:"But I'm ME! I like me!",outro:['Look up! It is Mumble!','Mumble: Go home! No more words!','{name}: Stop! Give me the crystals!','Mumble: No! Words are bad. They laugh at me.','Henny: Can I come? I can help!','Pip: Mumble... To be continued...']}
 ];
+// Mumble's diary: one page is found after each boss
+const DIARY=[
+ ["I am Mumble. My home is grey. It is very quiet.","我是 Mumble。我的家是灰色的，非常安靜。"],
+ ["I had a red cap. The kids said, \"Ha, ha! Silly cap!\"","我以前有一頂紅帽子。小朋友說：「哈哈！好蠢的帽子！」"],
+ ["I say a word. It comes out wrong. Everyone laughs.","我說一個字，結果說錯了，大家都笑我。"],
+ ["It is my birthday, too. No cake. No party. No friends.","今天也是我的生日。沒有蛋糕，沒有派對，沒有朋友。"],
+ ["I like animals. But the animals run away from me.","我喜歡動物，可是動物都跑走了。"],
+ ["Are they my friends? No, they aren't. They're shadows.","他們是我的朋友嗎？不是，他們只是影子。"],
+ ["\"You are small! You are grey!\" Mean words make me sad.","「你好小！你好灰！」難聽的話讓我很難過。"],
+ ["Henny is not big. But she says, \"I'm ME!\" Can I say it, too?","Henny 不大，可是她說：「我就是我！」我也可以這樣說嗎？"]];
+function diaryHtml(zi,isNew){const d=DIARY[zi];if(!d)return '';return `<div class="diary${isNew?' new':''}"><div class="dtag">📔 Mumble's Diary · page ${zi+1}${isNew?' · NEW!':''}</div><span class="en">${esc(d[0])}</span><span class="zh">${esc(d[1])}</span><button class="say" data-say="${esc(d[0])}">Listen</button></div>`}
+function bindSay(root){(root||app).querySelectorAll('[data-say]').forEach(b=>b.onclick=()=>speak(b.dataset.say))}
+function diaryBook(back){const got=(S.diary||[]).slice().sort((a,b)=>a-b);
+ app.innerHTML=hud()+`<div class="panel"><h2 style="font-size:1.5rem;margin-bottom:6px">📔 Mumble's Diary <small>${got.length} / ${DIARY.length} pages</small></h2>
+  <p style="margin-bottom:10px">Beat a boss to find a page. Why is Mumble so sad?</p>
+  <div class="diaries">${got.map(zi=>diaryHtml(zi,false)).join('')}</div>
+  <div class="row"><button class="btn soft" id="dback">Back</button></div></div>`;
+ bindSay();document.getElementById('dback').onclick=back}
 const PROLOGUE=['It is your birthday! You are seven today.','Every morning, the Rainbow Bell rings. Ding, dong!','But today... no bell.','Look! Grey fog!',"Hoo! Help! I'm Pip!",'The crystals are gone!','No crystals, no colors. No colors, no words!','Words beat the fog. Can you spell?'];
 // pages: [english, 中文, who shows in the fallback picture]
 const BOOKS={
@@ -1331,9 +1390,11 @@ function storybook(id,done){
 function shelf(back){
  const ids=Object.keys(BOOKS).filter(id=>(S.books||[]).includes(id));
  app.innerHTML=hud()+`<div class="panel"><h2 style="font-size:1.5rem;margin-bottom:10px">Storybooks</h2>
+  ${(S.diary||[]).length?`<div class="row" style="margin-bottom:10px"><button class="btn soft" id="diaryb">📔 Mumble's Diary (${S.diary.length} / ${DIARY.length})</button></div>`:''}
   ${ids.length?`<div class="shelf">${ids.map(id=>{const b=BOOKS[id],s=b.zi!=null?SPR[b.zi]:null,bg=b.bg?IMG[b.bg]:s&&IMG[s.bg];return `<button class="bookbtn" data-id="${id}"><span class="cover" style="${bg?`background-image:url(${bg})`:''}"></span><b>${esc(b.title)}</b></button>`}).join('')}</div>`:'<p>Clear a stage to get a storybook!</p>'}
   <div class="row"><button class="btn soft" id="sback">Back to map</button></div></div>`;
  app.querySelectorAll('.bookbtn').forEach(x=>x.onclick=()=>storybook(x.dataset.id,()=>shelf(back)));
+ const db=document.getElementById('diaryb');if(db)db.onclick=()=>diaryBook(()=>shelf(back));
  document.getElementById('sback').onclick=back||map;
 }
 
