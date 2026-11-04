@@ -1,0 +1,12 @@
+<!doctype html><html><body style="margin:0;background:#bfe3a8"><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script><script src="../../lib/GLTFLoader.js"></script><script>
+// Preview: tools/blender/preview.html?m=m22-sheep,hero-girl&c=walk&t=.2&f=happy&y=-.4  (m models, c clip, t seconds, f face, y turn)
+const Q=new URLSearchParams(location.search),names=(Q.get('m')||'m11-dust,m12-sock,m13-cushion,m14-balloon,m21-hay,m22-sheep,m23-mud,m24-fruit,hero-boy,hero-girl,pip').split(','),clip=Q.get('c')||'',T=+(Q.get('t')||0),face=Q.get('f')||'grumpy',yaw=+(Q.get('y')||-.4);
+const W=200,H=230,r=new THREE.WebGLRenderer({antialias:true});r.setSize(W*names.length,H);r.setClearColor(0xbfe3a8);document.body.appendChild(r.domElement);
+r.setScissorTest(true);let n=0;const L=new THREE.GLTFLoader();
+names.forEach((nm,i)=>L.load('../../models/'+nm+'.glb',g=>{const sc=new THREE.Scene();sc.add(new THREE.HemisphereLight(0xffffff,0x88aa77,.7));const d=new THREE.DirectionalLight(0xfff1dd,.8);d.position.set(-3,6,5);sc.add(d);
+ g.scene.traverse(o=>{if(o.name==='face_happy')o.visible=face==='happy';if(o.name==='face_grumpy')o.visible=face!=='happy';if(o.isMesh&&o.material.color&&!o.material.userData.cv){o.material.userData.cv=1;o.material.color.convertLinearToSRGB()}});
+ const s=g.scene;s.rotation.y=yaw;sc.add(s);if(clip){const m=new THREE.AnimationMixer(s);const a=g.animations.find(a=>a.name===clip);if(a){m.clipAction(a).play();m.setTime(T)}}
+ const b=new THREE.Box3().setFromObject(s),c=b.getCenter(new THREE.Vector3()),h=b.max.y-b.min.y;
+ const cam=new THREE.PerspectiveCamera(30,W/H,.01,50);cam.position.set(c.x,c.y+h*.15,c.z+h*2.6);cam.lookAt(c);
+ r.setViewport(i*W,0,W,H);r.setScissor(i*W,0,W,H);r.render(sc,cam);if(++n===names.length)window.done=1},undefined,e=>{console.log('fail',nm);if(++n===names.length)window.done=1}));
+</script></body></html>

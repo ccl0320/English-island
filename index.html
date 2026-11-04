@@ -745,6 +745,9 @@ function makeWalker(kind){const n='walk-'+kind;if(!IMG[n])return null;const T=TH
  g.userData={sprite:sp,walk:{tex,dir:2,fr:0,acc:0},sh:h};setFrame(g,2,0);return g}
 function setFrame(g,dir,fr){const w=g.userData.walk;w.dir=dir;w.fr=fr;w.tex.offset.set(fr/8,1-(dir+1)/4)}
 function makeHero(){
+ const m3=modelChar(S.hero==='girl'?'hero-girl':'hero-boy',1.8);
+ if(m3){const pip=modelChar('pip',.62)||charSprite('pip',.7,1);
+  if(pip){if(pip.children[1]&&!pip.userData.model)pip.children[1].visible=false;pip.position.set(-.95,1.6,0);m3.add(pip);m3.userData.pip=pip}return m3}
  const wk=makeWalker(S.hero==='girl'?'girl':'boy');const base=wk||charSprite(S.hero==='girl'?'hero-girl':'hero-boy',1.9,1);
  if(base){const pip=charSprite('pip',.7,1);if(pip){pip.children[1].visible=false;pip.position.set(-.95,1.6,0);base.add(pip);base.userData.pip=pip}return base}
  const T=THREE,g=new T.Group();const body=new T.Mesh(new T.CylinderGeometry(.22,.3,.42,14),M('#3A7BD5'));body.position.y=.5;g.add(body);
@@ -761,24 +764,29 @@ function makeMonster(zi,big,keeper){const T=THREE,s=SPR[zi]||{};
 
 // ---------- Blender models (GLB, made by tools/blender/*.py) ----------
 // A monster listed here is drawn in 3D; if its file is missing or fails to load, the PNG sprite is used as before.
-const MODELS={'m11-dust':'models/m11-dust.glb'};
+const MODELS={};['m11-dust','m12-sock','m13-cushion','m14-balloon','m21-hay','m22-sheep','m23-mud','m24-fruit','hero-boy','hero-girl','pip'].forEach(n=>MODELS[n]='models/'+n+'.glb');
 const GLB={};
 (function loadModels(){if(!window.THREE||!THREE.GLTFLoader)return;const L=new THREE.GLTFLoader();
  Object.entries(MODELS).forEach(([k,u])=>L.load(u,g=>{
   g.scene.traverse(o=>{if(!o.isMesh)return;o.castShadow=true;o.receiveShadow=true;const m=o.material;
-   // the game draws hex colours as-is (no sRGB output), so bring Blender's linear colours back to hex space
-   if(m&&m.color){m.color.convertLinearToSRGB();m.metalness=0}});
+   // the game draws hex colours as-is (no sRGB output), so bring Blender's linear colours back to hex space (once per material: parts share them)
+   if(m&&m.color&&!m.userData.srgb){m.userData.srgb=1;m.color.convertLinearToSRGB();m.metalness=0}});
   GLB[k]=g},undefined,()=>{}))})();
-function modelMonster(name,h){const g0=GLB[name];if(!g0)return null;const T=THREE;
- const s=T.SkeletonUtils?T.SkeletonUtils.clone(g0.scene):g0.scene.clone(true),mats=[];
- s.traverse(o=>{if(!o.isMesh)return;o.material=o.material.clone();const c=o.material.color.clone(),l=c.r*.3+c.g*.59+c.b*.11;
-  mats.push({m:o.material,c,gr:new T.Color(l*.7+.12,l*.72+.13,l*.78+.15)})});
+// a model scaled to height h, with its clips ready: {g (group to place), md (s, mixer, acts)}
+function modelChar(name,h){const g0=GLB[name];if(!g0)return null;const T=THREE;
+ const s=T.SkeletonUtils?T.SkeletonUtils.clone(g0.scene):g0.scene.clone(true);
  const b=new T.Box3().setFromObject(s);s.scale.setScalar(h/(b.max.y-b.min.y));
  const g=new T.Group();g.add(s);const mixer=new T.AnimationMixer(s),acts={};
  g0.animations.forEach(a=>acts[a.name]=mixer.clipAction(a));
- const md={s,mixer,acts,mats,cur:null,col:-1,happy:s.getObjectByName('face_happy'),grumpy:s.getObjectByName('face_grumpy')};
+ const md={s,mixer,acts,mats:[],cur:null,col:-1};
  mixer.addEventListener('finished',()=>{if(md.cur&&md.cur!=='color_up')mPlay(md,'idle')});
- mColor(md,0);mPlay(md,'idle');g.userData={model:md,sh:h};return g}
+ mPlay(md,'idle');g.userData={model:md,sh:h};return g}
+function modelMonster(name,h){const g=modelChar(name,h);if(!g)return null;const T=THREE,md=g.userData.model;
+ md.s.traverse(o=>{if(!o.isMesh)return;o.material=o.material.clone();const c=o.material.color.clone(),l=c.r*.3+c.g*.59+c.b*.11;
+  md.mats.push({m:o.material,c,gr:new T.Color(l*.7+.12,l*.72+.13,l*.78+.15)})});
+ md.happy=md.s.getObjectByName('face_happy');md.grumpy=md.s.getObjectByName('face_grumpy');
+ mColor(md,0);return g}
+function heroAct(n){const u=P&&P.hero&&P.hero.userData;if(u&&u.model)mPlay(u.model,n,true)}
 function mPlay(md,n,once){const a=md.acts[n];if(!a||(md.cur===n&&!once))return;const old=md.cur&&md.acts[md.cur];
  a.reset();a.setLoop(once?THREE.LoopOnce:THREE.LoopRepeat);a.clampWhenFinished=!!once;a.play();if(old&&old!==a)a.crossFadeFrom(old,.15,false);md.cur=n}
 function mColor(md,t){t=Math.max(0,Math.min(1,t));if(t===md.col)return;md.col=t;
@@ -999,7 +1007,7 @@ function coinBurst(pos,n){const T=THREE;for(let i=0;i<n;i++){const c=new T.Mesh(
 function touchMonster(o){
  P.lock=true;const z=ZONES[P.zi];
  P.st.reward=o.hp>2?20:10;Object.assign(P.st,{chest:false,winText:'',next:'',finisher:o.hp>2?pickSent(P.zi):null});
- P.st.onWin=()=>{o.alive=false;o.dying=0;arena(P.zi);poof(o.m.position,z.color);coinBurst(o.m.position,o.hp>2?8:5);speak('Great job!');
+ P.st.onWin=()=>{o.alive=false;o.dying=0;arena(P.zi);heroAct('cheer');poof(o.m.position,z.color);coinBurst(o.m.position,o.hp>2?8:5);speak('Great job!');
   toast(`+${o.hp>2?20:10} coins! `+(arenaLeft()?'Keep going up!':'The path is open! The boss is waiting at the top!'));updLeft()};
  P.st.label=`Monster HP ${o.hp}: every right answer is one hit${o.hp>2?'. Last hit: a sentence!':''}`;
  battle(P.zi,o.list,0,P.st);
@@ -1019,7 +1027,10 @@ function stepArena(dt,t){
  clampIn(h.position,front);dxm=h.position.x-x0;dzm=h.position.z-z0;
  if(Math.hypot(dxm,dzm)<.0005)moving=false;
  const u=h.userData;
- if(u.walk){const w=u.walk;if(moving){const c=Math.cos(W.yaw),s=Math.sin(W.yaw),sx=dxm*c-dzm*s,sf=-(dxm*s+dzm*c);
+ if(u.model){const md=u.model;md.mixer.update(RM?0:dt);if(md.cur==='idle'||md.cur==='walk')mPlay(md,moving?'walk':'idle');
+  if(moving){const want=Math.atan2(dxm,dzm);let da=want-md.s.rotation.y;da=Math.atan2(Math.sin(da),Math.cos(da));md.s.rotation.y+=da*Math.min(1,dt*10)}
+  const pm=u.pip&&u.pip.userData.model;if(pm){pm.mixer.update(RM?0:dt);mPlay(pm,moving?'flap':'idle')}}
+ else if(u.walk){const w=u.walk;if(moving){const c=Math.cos(W.yaw),s=Math.sin(W.yaw),sx=dxm*c-dzm*s,sf=-(dxm*s+dzm*c);
    const dir=Math.abs(sx)>Math.abs(sf)*1.15?(sx>0?0:1):(sf>0?2:3);w.acc+=dt;if(w.acc>.085||dir!==w.dir){w.acc=0;setFrame(h,dir,(w.fr+1)%8)}}
   else if(w.fr!==0)setFrame(h,w.dir,0);
   u.sprite.position.y=0}
