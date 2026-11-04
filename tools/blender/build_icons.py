@@ -684,6 +684,276 @@ def _():
     b = ball(.2, (0, .86, .16), m('cap_brim', '#2F5893'), scale=(.9, .08, .9)); cut(b, lambda x, y, z: z > .08)
 
 
+# ---------------- Word Book words (Magic Word Book, PR #5) ----------------
+@prop('ant')
+def _():
+    b = m('ant', '#5A3A2E')
+    for i, (z, r) in enumerate(((.32, .14), (.08, .1), (-.2, .18))): ball(r, (0, .25, z), b, scale=(1, .85, 1.1 if i == 2 else 1), sub=3)
+    for sx in (-1, 1):
+        for z in (.12, .05, -.02):
+            tube([(sx * .05, .25, z), (sx * .22, .3, z + .04), (sx * .3, .03, z + .08)], .018, b, res=4, bev=1)
+        tube([(sx * .05, .38, .4), (sx * .12, .55, .45), (sx * .18, .58, .38)], .014, b, res=4, bev=1)
+    eyes(.29, .45, .06, .03, smile=True, col='#1A0F0A')
+
+
+@prop('jam')
+def _():
+    lathe([(0, 0), (.22, 0), (.25, .05), (.25, .4), (.2, .48), (0, .48)], m('jam_jar', '#C9283E', .2))
+    lathe([(0, .48), (.23, .48), (.24, .56), (0, .57)], m('jam_lid', '#F2F2F2', .5))
+    ball(.17, (0, .62, 0), m('jam_cloth', '#E85A5A'), scale=(1.6, .25, 1.6), sub=3)
+    box((.3, .16, .02), (0, .25, .25), m('label', '#FFF5D6'), bevel=.01)
+    ball(.06, (0, .25, .265), m('jam_berry', '#D6334F'), scale=(1, 1, .3))
+
+
+@prop('fan')   # 電風扇: an electric fan
+def _():
+    w, b = m('fan_body', '#F2F2F2', .4), m('fan_blue', '#4AB3E8', .3)
+    lathe([(0, 0), (.25, 0), (.27, .04), (.22, .08), (0, .09)], w, seg=24)
+    cyl(.035, .5, (0, .33, 0), w, 12)
+    ball(.08, (0, .62, -.02), w, scale=(1, 1, 1.3), sub=3)
+    for i in range(3):
+        a = TAU * i / 3 + .3
+        ball(.13, (math.cos(a) * .14, .62 + math.sin(a) * .14, .08), b, scale=(1, .55, .15), sub=3).rotation_euler = (0, 0, 0)
+    ball(.045, (0, .62, .1), w, sub=2)
+    for r in (.15, .3):
+        lathe([(r - .006, -.006), (r + .006, -.006), (r + .006, .006), (r - .006, .006), (r - .006, -.006)], w, seg=36, axis='z', pos=(0, .62, .14), cap=False)
+    for i in range(8):
+        a = TAU * i / 8; tube([(0, .62, .14), (math.cos(a) * .3, .62 + math.sin(a) * .3, .14)], .005, w, res=1, bev=1)
+    lathe([(.3, -.006), (.31, .0), (.3, .006)], w, seg=36, axis='z', pos=(0, .62, .02), cap=False)
+    ball(.03, (.12, .06, .2), m('btn', '#E0473F'), scale=(1, .5, 1))
+
+
+@prop('garden')
+def _():
+    ball(.5, (0, 0, 0), m('soil', '#6FB548'), scale=(1, .18, .7), sub=3)
+    for i, (x, z, c) in enumerate(((-.3, .1, '#E0473F'), (-.1, -.15, '#F2C230'), (.1, .15, '#E85AA8'), (.3, -.05, '#E0473F'), (0, .0, '#A56BD6'))):
+        cyl(.015, .35, (x, .2, z), m('stem', '#4E9A3A'))
+        ball(.09, (x, .42, z), m('tulip' + c, c), scale=(1, 1.3, 1))
+        for k in (-1, 1): ball(.05, (x + k * .05, .45, z), m('tulip' + c, c), scale=(.6, 1.2, .8))
+        ball(.06, (x + .05, .15, z), m('leaf', '#5DBB63'), scale=(.4, 1.3, .4))
+
+
+@prop('circle')
+def _(): lathe([(.3, -.06), (.42, -.06), (.45, 0), (.42, .06), (.3, .06), (.27, 0), (.3, -.06)], m('ring', '#E0473F'), seg=40, axis='z', pos=(0, .45, 0), cap=False)
+
+
+@prop('square')
+def _(): box((.75, .75, .14), (0, .4, 0), m('sq', '#E0473F'), bevel=.05)
+
+
+@prop('elephant')   # "big"
+def _():
+    g = m('elephant', '#9EA8B8')
+    ball(.38, (0, .52, -.05), g, scale=(1.1, .9, 1.2), sub=3)
+    ball(.28, (0, .72, .32), g, sub=3)
+    tube([(0, .65, .55), (0, .45, .65), (0, .3, .62), (0, .28, .55)], .07, g, [1, .8, .6, .5], res=6, bev=2)
+    for sx in (-1, 1):
+        ball(.22, (sx * .28, .75, .25), m('ear_e', '#B9C1CF'), scale=(.25, 1, .9), sub=3)
+        for z in (-.25, .18): cyl(.1, .35, (sx * .2, .17, z), g, 12)
+        tube([(sx * .1, .55, .55), (sx * .14, .48, .65)], .025, m('tusk', '#FFF8E8'), [1, .4], res=3, bev=1)
+    eyes(.8, .54, .12, .035, smile=False)
+
+
+@prop('bag')
+def _():
+    box((.6, .7, .3), (0, .4, 0), m('bag', '#3E8ED0'), bevel=.1)
+    box((.44, .3, .08), (0, .3, .17), m('bag_pocket', '#2F6FAF'), bevel=.05)
+    tube([(-.18, .72, 0), (0, .9, 0), (.18, .72, 0)], .03, m('strap', '#2A4D7A'), res=6, bev=2)
+    ball(.025, (0, .45, .21), m('gold', '#E9B83A', .35))
+
+
+@prop('mat')
+def _():
+    box((.9, .05, .7), (0, .03, .05), m('mat', '#F08C2E'), bevel=.02)
+    for i in range(4): box((.9, .052, .05), (0, .032, -.2 + i * .15), m('mat_stripe', '#F7C25A'), bevel=0)
+    cyl(.13, .9, (0, .14, -.36), m('mat', '#F08C2E'), 20, axis='x')
+    cyl(.135, .05, (0, .14, -.36), m('mat_stripe', '#F7C25A'), 20, axis='x')
+    for x in (-.47, .47):
+        for i in range(5): cyl(.008, .07, (x, .03, -.1 + i * .08), m('mat_stripe', '#F7C25A'), 4, axis='x')
+
+
+@prop('pencil_case')
+def _():
+    box((.85, .3, .3), (0, .2, 0), m('pcase', '#5DBB63'), bevel=.12)
+    tube([(-.38, .36, 0), (.38, .36, 0)], .015, m('zip', '#3A7D40'), res=1, bev=1)
+    for i, (x, c) in enumerate(((-.15, '#E0473F'), (0, '#F2C230'), (.15, '#3E8ED0'))):
+        cyl(.035, .4, (x, .5, -.02), m('pencil' + c, c), 6)
+        lathe([(.035, 0), (.005, .08)], m('wood', '#F3D29A'), seg=6, pos=(x, .7, -.02))
+
+
+@prop('bottle')
+def _():
+    lathe([(0, 0), (.15, 0), (.17, .05), (.17, .55), (.12, .66), (.1, .7), (0, .7)], m('bottle', '#4AB3E8', .2), seg=20)
+    lathe([(.1, .7), (.11, .82), (0, .83)], m('bottle_cap', '#E0473F'), seg=16)
+    lathe([(.171, .2), (.171, .4)], m('bottle_band', '#FFFFFF'), seg=20, cap=False)
+
+
+@prop('lunchbox')
+def _():
+    box((.8, .32, .55), (0, .18, 0), m('lbox', '#E85A5A'), bevel=.08)
+    box((.82, .08, .57), (0, .36, 0), m('lbox_lid', '#F7A6A6'), bevel=.04)
+    tube([(-.15, .4, 0), (0, .52, 0), (.15, .4, 0)], .025, m('lbox_h', '#C9283E'), res=6, bev=2)
+    eyes(.2, .29, .1, .035)
+
+
+@prop('scissors')
+def _():
+    blade = m('blade', '#D6DCE4', .25)
+    for sx in (-1, 1):
+        flat([(0, 0), (sx * .05, .02), (sx * .03, .55), (0, .58)], .03, (sx * .02, .3, sx * .01), blade, rot_y=0)
+        lathe([(.06, -.02), (.1, -.02), (.1, .02), (.06, .02)], m('handle', '#E0473F'), seg=20, axis='z', pos=(sx * .14, .15, 0))
+        tube([(sx * .1, .2, 0), (sx * .03, .3, 0)], .025, m('handle', '#E0473F'), res=2, bev=1)
+    ball(.03, (0, .31, .03), m('gold', '#E9B83A', .35))
+
+
+@prop('sneakers')
+def _():
+    for sx, dz in ((-1, 0), (1, -.12)):
+        x = sx * .2; c = m('shoe', '#3E8ED0'); w = m('sole', '#FFFFFF')
+        box((.24, .08, .56), (x, .04, dz), w, bevel=.035)
+        box((.22, .13, .5), (x, .14, dz - .01), c, bevel=.06)
+        ball(.12, (x, .13, dz + .18), c, scale=(.95, .7, 1), sub=3)
+        box((.22, .2, .2), (x, .25, dz - .16), c, bevel=.07)
+        box((.12, .14, .18), (x, .22, dz + .04), m('tongue_s', '#2F6FAF'), bevel=.04)
+        for k in range(3): tube([(x - .07, .23 - k * .03, dz + .0 + k * .06), (x + .07, .23 - k * .03, dz + .0 + k * .06)], .012, w, res=1, bev=1)
+        ball(.04, (x + sx * .11, .17, dz - .12), m('star_s', '#F2C230'), scale=(.3, 1, 1))
+
+
+@prop('shorts')
+def _():
+    c = m('shorts_c', '#3E8ED0')
+    box((.6, .16, .2), (0, .62, 0), c, bevel=.06)
+    for sx in (-1, 1):
+        lathe([(.15, .2), (.16, .25), (.15, .58), (0, .6)], c, seg=16, pos=(sx * .16, 0, 0))
+    box((.62, .05, .22), (0, .7, 0), m('shorts_band', '#F2F2F2'), bevel=.02)
+
+
+@prop('web')
+def _():
+    w = m('web', '#F4F6FA', .4)
+    for i in range(8):
+        a = TAU * i / 8; tube([(0, .45, 0), (math.cos(a) * .45, .45 + math.sin(a) * .45, 0)], .008, w, res=1, bev=1)
+    for r in (.12, .22, .32, .42):
+        pts = [(math.cos(TAU * i / 8) * r, .45 + math.sin(TAU * i / 8) * r, 0) for i in range(9)]
+        tube(pts, .007, w, res=2, bev=1)
+    ball(.08, (.15, .5, .03), m('spider', '#3A3330'), sub=3); eyes(.52, .1, .03, .015, col='#FFFFFF', smile=False)
+
+
+@prop('ten')
+def _():
+    c = m('ten', '#3E8ED0')
+    box((.12, .6, .14), (-.25, .4, 0), c, bevel=.05); box((.12, .1, .14), (-.3, .66, 0), c, bevel=.04)
+    o = lathe([(.08, -.07), (.2, -.07), (.2, .07), (.08, .07), (.08, -.07)], c, seg=28, axis='z', pos=(0, 0, 0), cap=False)
+    for v in o.data.vertices: v.co.x = v.co.x * .75 + .14; v.co.z = v.co.z * 1.5 + .4
+
+
+@prop('jet')
+def _():
+    b = m('jet', '#F2F2F2', .4)
+    ball(.16, (0, .4, 0), b, scale=(1, 1, 3.6), sub=3)
+    lathe([(.16, 0), (.0, .25)], m('jet_nose', '#E0473F'), seg=16, axis='z', pos=(0, .4, .5))
+    for sx in (-1, 1):
+        flat([(0, .25), (sx * .7, -.1), (sx * .7, -.22), (0, -.15)], .03, (0, .4, 0), m('jet_wing', '#3E8ED0'), plane='xz')
+        flat([(0, -.45), (sx * .25, -.6), (sx * .25, -.66), (0, -.6)], .03, (0, .42, 0), m('jet_wing', '#3E8ED0'), plane='xz')
+    flat([(0, 0), (.0, .32), (-.2, .32), (-.3, 0)], .03, (0, .45, -.42), m('jet_wing', '#3E8ED0'), rot_y=math.pi / 2)
+    for z in (.15, 0, -.15): ball(.04, (.15, .45, z), m('window', '#7FC8F0', .2), scale=(.3, 1, 1))
+
+
+@prop('dance')
+def _():
+    person(hair='#8B5634', shirt='#E85AA8', style='pigtails')
+    for sx in (-1, 1): tube([(sx * .22, .4, 0), (sx * .38, .62, .02), (sx * .42, .82, .04)], .045, m('p_shirt#E85AA8', '#E85AA8'), res=4, bev=2)
+    for sx in (-1, 1): ball(.06, (sx * .42, .88, .04), m('p_skin', '#F8D5B8'))
+    for x, y in ((-.5, .3), (.5, .45), (.45, 1.0)):
+        ball(.05, (x, y, .1), m('note', '#A56BD6'), scale=(1, .8, .6)); cyl(.01, .15, (x + .045, y + .08, .1), m('note', '#A56BD6'), 4)
+
+
+@prop('read')
+def _():
+    for sx in (-1, 1):
+        p = [(0, 0)] + [(sx * .42 * i / 6, .06 * math.sin(math.pi * i / 6)) for i in range(1, 7)] + [(sx * .42, -.04), (0, -.04)]
+        flat([(sx * .44, -.06), (0, -.06), (0, .02), (sx * .44, .0)], .55, (0, .3, 0), m('cover', '#E0473F'), plane='xz')
+        for k in range(3):
+            pts = [(sx * .42 * i / 6, .06 + .05 * math.sin(math.pi * i / 6) - k * .015) for i in range(7)]
+            flat(pts + [(sx * .42, .02 - k * .015), (0, .02 - k * .015)], .5, (0, .3 + k * .01, 0), m('pages', '#FFF8E8'), plane='xz')
+        for j in range(4): box((.25, .006, .025), (sx * .21, .41, -.15 + j * .1), m('text', '#8A8F99'), bevel=0)
+
+
+@prop('smell')
+def _():
+    ball(.38, (0, .45, 0), m('face_s', '#F8D5B8'), sub=3)
+    ball(.11, (0, .42, .36), m('nose_s', '#F3B998'), scale=(1, .9, .9), sub=3)
+    for sx in (-1, 1):
+        tube([(sx * .16, .55, .33), (sx * .11, .59, .35), (sx * .06, .55, .36)], .014, m('eye', '#2A1A14', .3), res=4, bev=1)
+        ball(.06, (sx * .22, .38, .3), m('cheek', '#FF9E9E', .9), scale=(1, .6, .3))
+    tube([(-.05, .27, .33), (0, .25, .34), (.05, .27, .33)], .014, m('eye', '#2A1A14', .3), res=4, bev=1)
+    for x in (.3, .45):
+        tube([(x, .55, .3), (x + .07, .7, .3), (x - .02, .85, .3), (x + .06, 1.0, .3)], .022, m('scent', '#9BD3F2', .4), res=6, bev=2)
+    cyl(.012, .35, (.55, .2, .25), m('stem', '#4E9A3A'))
+    for i in range(5):
+        a = TAU * i / 5; ball(.06, (.55 + math.cos(a) * .07, .4 + math.sin(a) * .07, .25), m('petal', '#E85AA8'))
+    ball(.045, (.55, .4, .28), m('gold', '#E9B83A', .35))
+
+
+@prop('taste')
+def _():
+    ball(.42, (0, .45, 0), m('face_t', '#FFD84A'), sub=3)
+    eyes(.55, .38, .15, .05, smile=False)
+    ball(.14, (0, .3, .35), m('mouth_t', '#9C2A35'), scale=(1.2, .6, .4))
+    ball(.1, (.02, .2, .42), m('tongue_t', '#F07C86'), scale=(.9, 1.2, .4))
+    lathe([(0, 0), (.09, .06), (.11, .16), (0, .18)], m('cone', '#E5B36A'), seg=12, pos=(.38, .35, .2))
+    ball(.11, (.38, .55, .2), m('icecream', '#F7A6C8'), sub=3)
+
+
+@prop('fries')
+def _():
+    box((.5, .5, .25), (0, .25, 0), m('fries_box', '#E0473F'), bevel=.04)
+    for i in range(14):
+        x = random.uniform(-.2, .2); z = random.uniform(-.08, .08); h = random.uniform(.35, .55)
+        box((.06, h, .06), (x, .45 + h / 2 - .1, z), m('fry', '#F7C948'), bevel=.015)
+    ball(.08, (0, .3, .13), m('gold', '#E9B83A', .35), scale=(1.4, 1, .2))
+
+
+@prop('rice')
+def _():
+    lathe([(0, 0), (.15, 0), (.18, .03), (.38, .2), (.42, .32), (.4, .33), (0, .2)], m('bowl', '#F2F2F2', .35), seg=24)
+    lathe([(.39, .32), (.4, .33)], m('bowl_band', '#3E8ED0'), seg=24, cap=False)
+    ball(.37, (0, .36, 0), m('rice_w', '#FFFDF5'), scale=(1, .62, 1), sub=3)
+    for i in range(18):
+        a = random.uniform(0, TAU); r = random.uniform(0, .3)
+        ball(.035, (math.cos(a) * r, .58 - r * .35, math.sin(a) * r), m('rice_w', '#FFFDF5'), scale=(1.6, .7, .8), sub=1)
+    tube([(-.3, .62, -.1), (.35, .72, .1)], .015, m('chopstick', '#B5743E'), res=1, bev=1)
+    tube([(-.3, .58, -.02), (.35, .68, .18)], .015, m('chopstick', '#B5743E'), res=1, bev=1)
+
+
+@prop('cookie')
+def _():
+    lathe([(0, -.05), (.4, -.05), (.43, 0), (.4, .05), (0, .055)], m('cookie', '#D69A52'), seg=28, axis='z', pos=(0, .45, 0))
+    for i in range(9):
+        a = TAU * i / 9 + .3; r = .25 if i % 2 else .12
+        ball(.05, (math.cos(a) * r, .45 + math.sin(a) * r, .055), m('choc', '#5A3A2E'), scale=(1, 1, .5))
+    eyes(.5, .065, .12, .035)
+
+
+@prop('yogurt')
+def _():
+    lathe([(0, 0), (.2, 0), (.27, .45), (0, .45)], m('cup_y', '#FFFFFF', .3), seg=20)
+    lathe([(.271, .15), (.275, .32)], m('cup_band', '#F7A6C8'), seg=20, cap=False)
+    ball(.25, (0, .46, 0), m('yog', '#FDEFF4'), scale=(1, .35, 1), sub=3)
+    ball(.06, (0, .55, 0), m('berry', '#D6334F'), sub=2)
+    box((.06, .5, .02), (.15, .65, 0), m('spoon', '#D6DCE4', .3), bevel=.02)
+
+
+@prop('carrot')
+def _():
+    lathe([(0, 0), (.04, .06), (.1, .3), (.13, .55), (.12, .62), (0, .64)], m('carrot', '#F08C2E'), seg=16)
+    for i in range(4): tube([(0, .33 + i * .07, .11), (.05, .33 + i * .07, .12)], .008, m('carrot_line', '#D06E18'), res=1, bev=1)
+    for a in (-.5, 0, .5):
+        tube([(0, .62, 0), (math.sin(a) * .15, .82, 0), (math.sin(a) * .25, .95, 0)], .03, m('leaf', '#5DBB63'), [1, .8, .3], res=4, bev=2)
+    eyes(.4, .14, .055, .025)
+
+
+
 if __name__ == '__main__':
     out = sys.argv[-1] if sys.argv[-1].endswith('.glb') else 'models/icons.glb'
     only = [a for a in sys.argv[1:] if not a.endswith('.glb')]
