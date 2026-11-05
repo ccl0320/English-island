@@ -47,6 +47,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pip);outline-of
 .title{text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center;padding-block:28px}
 .title h1{font-size:clamp(2.2rem,8vw,3.6rem);background:linear-gradient(90deg,#E5484D,#F08C2E,#E8C02A,#2E9E5B,#3A7BD5,#4B4FB8,#8E4EC6);-webkit-background-clip:text;background-clip:text;color:transparent}
 .title p{margin:0;max-width:34em;line-height:1.6}
+.acct label{display:block;margin-top:10px}.acct .amsg{min-height:1.4em;color:var(--bad,#c0392b)}.acct .amsg .en{font-weight:700}.mpicks{display:grid;gap:10px}.mpick{font-size:1rem!important;line-height:1.4}
 .title input{font-family:var(--word);font-size:1.6rem;text-align:center;padding:8px 14px;border-radius:14px;border:3px solid var(--fog-deep);width:min(260px,100%)}
 /* map */
 .map{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
@@ -475,7 +476,108 @@ const CVC_DISTRACT='abcdefghijklmnoprstuvwy';
 let S={name:'',cleared:0,dex:[]};
 try{const s=JSON.parse(localStorage.getItem('rq-save')||'null');if(s&&typeof s.cleared==='number')S=s}catch(e){}
 if(!S.diary)S.diary=[...Array(Math.min(S.cleared||0,8)).keys()];
-function save(){try{localStorage.setItem('rq-save',JSON.stringify(S))}catch(e){}}
+// ---- Cloud save: log in with a username + password so the same progress follows the child to any device ----
+// Fill in from Supabase > Project Settings > API (Project URL + anon/publishable key). Leave blank to keep device-only saves.
+const CLOUD={url:'',key:''};
+const cloudOn=()=>!!(CLOUD.url&&CLOUD.key);
+let ACC=null;try{ACC=JSON.parse(localStorage.getItem('rq-account')||'null')}catch(e){}
+const accSave=()=>{try{ACC?localStorage.setItem('rq-account',JSON.stringify(ACC)):localStorage.removeItem('rq-account')}catch(e){}};
+const userMail=u=>u.toLowerCase()+'@players.english-island.app';
+const cleanUser=u=>String(u||'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+const SYNC={timer:0,busy:false,dirty:false,state:''};
+function save(){S.t=Date.now();try{localStorage.setItem('rq-save',JSON.stringify(S))}catch(e){}if(ACC&&cloudOn()){SYNC.dirty=true;try{localStorage.setItem('rq-dirty','1')}catch(e){}clearTimeout(SYNC.timer);SYNC.timer=setTimeout(cloudPush,2500)}}
+try{SYNC.dirty=localStorage.getItem('rq-dirty')==='1'}catch(e){}
+const sbBase=()=>CLOUD.url.replace(/\/+$/,'');
+async function authCall(path,body){
+ let r;try{r=await fetch(sbBase()+'/auth/v1/'+path,{method:'POST',headers:{'Content-Type':'application/json',apikey:CLOUD.key},body:JSON.stringify(body)})}catch(e){throw new Error('NETWORK')}
+ const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error_code||j.code||j.msg||j.error_description||'NETWORK');return j}
+const takeSession=j=>{ACC.token=j.access_token;ACC.refreshToken=j.refresh_token;ACC.exp=Date.now()+(+j.expires_in||3600)*1000;accSave()};
+async function idToken(){
+ if(!ACC)throw new Error('NO_ACCOUNT');
+ if(ACC.token&&ACC.exp>Date.now()+60000)return ACC.token;
+ takeSession(await authCall('token?grant_type=refresh_token',{refresh_token:ACC.refreshToken}));return ACC.token}
+const restHead=async()=>({apikey:CLOUD.key,Authorization:'Bearer '+await idToken(),'Content-Type':'application/json'});
+async function cloudGet(){
+ const r=await fetch(sbBase()+'/rest/v1/saves?select=data&user_id=eq.'+ACC.uid,{headers:await restHead()});
+ if(!r.ok)throw new Error('NETWORK');const rows=await r.json();return rows[0]?rows[0].data:null}
+async function cloudPush(){
+ if(!ACC||!cloudOn()||SYNC.busy)return;SYNC.busy=true;cloudMark('…');
+ try{const r=await fetch(sbBase()+'/rest/v1/saves?on_conflict=user_id',{method:'POST',headers:{...await restHead(),Prefer:'resolution=merge-duplicates,return=minimal'},
+   body:JSON.stringify({user_id:ACC.uid,username:ACC.user,data:S,updated_at:new Date(S.t||Date.now()).toISOString()})});
+  if(!r.ok)throw new Error('NETWORK');SYNC.dirty=false;try{localStorage.removeItem('rq-dirty')}catch(e){}cloudMark('✓')}
+ catch(e){cloudMark('⚠')}finally{SYNC.busy=false}}
+function cloudMark(s){SYNC.state=s;document.querySelectorAll('.cloudst').forEach(e=>e.textContent=s)}
+const fresh=()=>({name:'',cleared:0,dex:[]});
+const progressOf=s=>s?(s.cleared||0)*100000+(s.dex||[]).length*100+Math.min(99,(s.coins||0)/10|0):0;
+const hasProgress=s=>!!s&&((s.cleared||0)>0||(s.dex||[]).length>0||(s.coins||0)>0);
+function adopt(s){S=s;if(!S.dex)S.dex=[];if(!S.diary)S.diary=[...Array(Math.min(S.cleared||0,8)).keys()];try{localStorage.setItem('rq-save',JSON.stringify(S))}catch(e){}}
+// On start-up (already logged in): bring this device up to date with the cloud.
+async function cloudStartSync(){
+ if(!ACC||!cloudOn())return;
+ try{const c=await cloudGet();
+  if(!c){cloudPush();return}
+  const take=SYNC.dirty?(progressOf(c)>progressOf(S)):((c.t||0)>(S.t||0));
+  if(take){adopt(c);SYNC.dirty=false;try{localStorage.removeItem('rq-dirty')}catch(e){}cloudMark('✓');if(document.querySelector('.panel.title'))title()}
+  else if(SYNC.dirty||(S.t||0)>(c.t||0))cloudPush();else cloudMark('✓')}
+ catch(e){cloudMark('⚠')}}
+addEventListener('online',()=>{if(SYNC.dirty)cloudPush()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&SYNC.dirty){clearTimeout(SYNC.timer);cloudPush()}});
+const AUTH_MSG={user_already_exists:['That name is taken.','這個帳號名稱已經有人用了，換一個試試。'],email_exists:['That name is taken.','這個帳號名稱已經有人用了，換一個試試。'],
+ invalid_credentials:['Name or password is wrong.','帳號或密碼不對。'],email_not_confirmed:['Account not ready yet.','Supabase 還開著「Confirm email」，請到後台關掉。'],
+ weak_password:['Password needs 6 or more letters or numbers.','密碼至少要 6 個字。'],over_request_rate_limit:['Too many tries. Wait a little.','嘗試太多次，請等一下再試。'],
+ over_email_send_rate_limit:['Too many tries. Wait a little.','嘗試太多次，請等一下再試。（若一直出現，請確認已關掉「Confirm email」）'],
+ signup_disabled:['New accounts are turned off.','Supabase 後台關閉了註冊，請開啟「Allow new users to sign up」。'],email_provider_disabled:['Log in is not set up yet.','Supabase 還沒開啟 Email 登入方式。'],
+ user_banned:['This account is turned off.','這個帳號已被停用。'],NETWORK:['No internet right now.','現在連不上網路，請稍後再試。']};
+function authMsg(code){code=String(code);if(/already registered/i.test(code))code='user_already_exists';if(/invalid login/i.test(code))code='invalid_credentials';return AUTH_MSG[code]||AUTH_MSG.NETWORK}
+function accountScreen(back){
+ if(!cloudOn()){app.innerHTML=`<div class="panel title acct"><h1>☁️ Save to the Cloud</h1>
+  <p>Cloud save is not set up yet.</p><p class="teacher">給家長／老師：雲端存檔需要先在 Supabase 建立專案，並把設定填進 index.html 的 CLOUD。設定前，進度只會存在這台裝置。</p>
+  <button class="btn" id="aback">Back</button></div>`;document.getElementById('aback').onclick=back;return}
+ if(ACC){app.innerHTML=`<div class="panel title acct"><h1>☁️ Hi, ${esc(ACC.user)}!</h1>
+  <p>Your quest is saved in the cloud. Log in with the same name on another phone or tablet to keep playing.</p>
+  <p class="teacher">雲端狀態：<span class="cloudst">${SYNC.state||'…'}</span>（✓ 已同步，⚠ 目前離線、連上網路後會自動上傳）</p>
+  <button class="btn" id="async">Save now</button> <button class="btn soft" id="aout">Log out</button> <button class="btn soft" id="aback">Back</button>
+  <p class="teacher" id="amsg"></p></div>`;
+  document.getElementById('aback').onclick=back;
+  document.getElementById('async').onclick=async()=>{await cloudPush();document.getElementById('amsg').textContent=SYNC.dirty?'還沒上傳成功，請確認網路。':'已上傳到雲端 ✓'};
+  document.getElementById('aout').onclick=async()=>{const m=document.getElementById('amsg');if(SYNC.dirty){await cloudPush();if(SYNC.dirty&&!confirm('現在離線，最新進度還沒上傳。仍要登出嗎？（這台裝置上的進度會清除）'))return}
+   ACC=null;accSave();adopt(fresh());SYNC.dirty=false;try{localStorage.removeItem('rq-dirty')}catch(e){}cloudMark('');title()};return}
+ app.innerHTML=`<div class="panel title acct"><h1>☁️ Save to the Cloud</h1>
+  <p>Make an account, and your quest goes with you to any phone, tablet or computer.</p>
+  <label for="au">Account name</label><input id="au" maxlength="16" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="amy2019">
+  <label for="ap">Password</label><input id="ap" type="password" maxlength="30" autocomplete="current-password" placeholder="6 or more">
+  <div><button class="btn" id="ain">Log in</button> <button class="btn soft" id="anew">New account</button></div>
+  <p class="amsg" id="amsg" role="alert"></p>
+  <p class="teacher">給家長：帳號名稱只用英文字母和數字（3–16 字），密碼至少 6 字。不需要 email。請幫孩子記下帳號密碼，忘記密碼時可由老師在 Supabase 後台重設。<br>登入時，這台裝置上已有的進度會自動搬到帳號裡。</p>
+  <button class="btn soft" id="aback">Back</button></div>`;
+ document.getElementById('aback').onclick=back;
+ const msg=(en,zh)=>{document.getElementById('amsg').innerHTML=`<span class="en">${esc(en)}</span>${zh?' '+esc(zh):''}`};
+ const go=async isNew=>{
+  const u=cleanUser(document.getElementById('au').value),p=document.getElementById('ap').value;
+  if(u.length<3)return msg('Name needs 3 or more letters.','帳號名稱至少 3 個英文字母或數字。');
+  if(p.length<6)return msg('Password needs 6 or more.','密碼至少要 6 個字。');
+  document.querySelectorAll('.acct .btn').forEach(b=>b.disabled=true);msg('Please wait…');
+  try{const j=await authCall(isNew?'signup':'token?grant_type=password',{email:userMail(u),password:p});
+   if(!j.access_token)throw new Error('email_not_confirmed');
+   ACC={user:u,uid:j.user.id};takeSession(j);
+   const c=isNew?null:await cloudGet().catch(()=>null);
+   if(c&&hasProgress(c)&&hasProgress(S)&&JSON.stringify(c.dex)!==JSON.stringify(S.dex)){mergeChoice(c,back);return}
+   if(c&&hasProgress(c))adopt(c);else{if(!S.name)S.name=u[0].toUpperCase()+u.slice(1).replace(/\d+$/,'')}
+   SYNC.dirty=true;save();await cloudPush();sfx('coin');title()}
+  catch(e){const [en,zh]=authMsg(e.message);msg(en,zh);document.querySelectorAll('.acct .btn').forEach(b=>b.disabled=false)}};
+ document.getElementById('ain').onclick=()=>go(false);
+ document.getElementById('anew').onclick=()=>go(true);
+ document.getElementById('ap').onkeydown=e=>{if(e.key==='Enter')go(false)};
+}
+function mergeChoice(c,back){
+ const card=(s,lbl,id)=>`<button class="btn soft mpick" id="${id}"><b>${lbl}</b><br>${esc(s.name||'Hero')} · Stage ${Math.min(s.cleared||0,ZONES.length)} / ${ZONES.length} · ${(s.dex||[]).length} words · 🪙 ${s.coins||0}</button>`;
+ app.innerHTML=`<div class="panel title acct"><h1>Which quest?</h1><p>This device and your account have different quests. Pick one to keep.</p>
+  <p class="teacher">這台裝置和帳號裡的進度不同，請選一個保留（另一個會被取代）。</p>
+  <div class="mpicks">${card(c,'☁️ Account','mcloud')}${card(S,'📱 This device','mlocal')}</div></div>`;
+ const done=()=>{SYNC.dirty=true;save();cloudPush().then(title)};
+ document.getElementById('mcloud').onclick=()=>{adopt(c);done()};
+ document.getElementById('mlocal').onclick=done;
+}
 const app=document.getElementById('app');
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -501,12 +603,14 @@ function title(){
  <input id="nm" maxlength="12" value="${esc(S.name||'Amy')}" autocomplete="off">
  <div class="pickhero" role="group" aria-label="Choose your hero">${[['boy','Boy hero'],['girl','Girl hero']].map(([v,n])=>`<button class="ph ${(S.hero||'boy')===v?'on':''}" data-h="${v}" aria-pressed="${(S.hero||'boy')===v}"><img src="img/hero-${v}.png" alt="" onerror="this.remove()">${n}</button>`).join('')}</div>
  <button class="btn" id="go">Start!</button>
+ <button class="btn soft" id="acct">${ACC?`☁️ ${esc(ACC.user)} <span class="cloudst">${SYNC.state}</span>`:'☁️ Log in to save'}</button>
  <button class="btn soft" id="vset">Voice settings${AZ&&AZ.key?' (Azure on)':''}</button>
  <div>${muteHtml()}</div>
  ${S.cleared?`<button class="btn soft" id="reset">Start over</button>`:''}
  <p class="teacher">Turn on your speaker. Tap "Listen" to hear words and sentences.</p></div>`;
  document.getElementById('go').onclick=()=>{const v=document.getElementById('nm').value.trim().replace(/[^A-Za-z \-]/g,'');S.name=v?v[0].toUpperCase()+v.slice(1):'Amy';save();speak(`Hello, ${S.name}!`);if((S.books||[]).includes('00'))map();else storybook('00',()=>{speak(`Let's go, ${S.name}!`);map()})};
  document.getElementById('vset').onclick=()=>voiceSettings(title);
+ document.getElementById('acct').onclick=()=>accountScreen(title);
  app.querySelectorAll('.ph').forEach(b=>b.onclick=()=>{S.hero=b.dataset.h;save();app.querySelectorAll('.ph').forEach(x=>{x.classList.toggle('on',x===b);x.setAttribute('aria-pressed',String(x===b))})});
  const r=document.getElementById('reset');if(r)r.onclick=()=>{S={name:S.name,hero:S.hero,cleared:0,dex:[]};save();title()};
 }
@@ -1718,7 +1822,7 @@ function report(back){const N=ZONES.length,done=Math.min(S.cleared,N),miss=S.mis
  const mrow=([k,n])=>{const [t,zi,...v]=k.split('|');return `<tr><td>${esc(v.join('|'))}</td><td>${+zi+1}. ${esc(ZONES[+zi].zh)}</td><td>${n}</td><td>${open.has(k)?'⚠️ 還在練習營':'✅ 已練過'}</td></tr>`};
  const tw=top('w'),ts=top('s');
  const unseen=[];for(let zi=0;zi<done;zi++)ZONES[zi].words.forEach(w=>{if(!S.dex.includes(w[0])&&!unseen.includes(w[0]))unseen.push(w[0])});
- app.innerHTML=hud()+`<div class="panel rep"><h2 style="font-size:1.5rem">📊 老師報表 · ${esc(S.name)}</h2><p class="muted">${new Date().toLocaleDateString('zh-TW')} · 資料只存在這台裝置</p>
+ app.innerHTML=hud()+`<div class="panel rep"><h2 style="font-size:1.5rem">📊 老師報表 · ${esc(S.name)}</h2><p class="muted">${new Date().toLocaleDateString('zh-TW')} · ${ACC?'雲端帳號：'+esc(ACC.user):'資料只存在這台裝置'}</p>
   <div class="kpi"><div>完成關卡<b>${done} / ${N}</b></div><div>星星<b>${stars} / ${N*3}</b></div><div>學會單字<b>${S.dex.length} / ${dexTotal()}</b></div><div>練過句子<b>${seen.length} / ${SENT.reduce((a,l)=>a+l.length,0)}</b></div><div>練習營待複習<b>${campCount()}</b></div><div>遊玩天數<b>${(S.days||[]).length}</b></div><div>日記頁數<b>${(S.diary||[]).length} / ${DIARY.length}</b></div><div>朋友<b>💛 ${friendN()}</b></div></div>
   <h3>各關卡進度</h3><table><tr><th>關卡</th><th>星星</th><th>單字</th><th>句子（出現過）</th></tr>${rows}</table>
   <h3>最常拼錯的單字</h3>${tw.length?`<table><tr><th>單字</th><th>關卡</th><th>錯誤次數</th><th>狀態</th></tr>${tw.map(mrow).join('')}</table>`:'<p class="muted">還沒有紀錄。</p>'}
@@ -1945,5 +2049,5 @@ function muteHtml(){return `<button class="mute" onclick="bgmToggle()" aria-pres
  title=wrap(title,'map');map=wrap(map,'map');unitMap=wrap(unitMap,'map');mapGrid=wrap(mapGrid,'map');unitGrid=wrap(unitGrid,'map');story=wrap(story,'map');arena=wrap(arena,'map');clear=wrap(clear,'map');
  const sp=speak;speak=function(t){bgmDuck(String(t).length>12?3200:1400);return sp.apply(this,arguments)}}
 
-title();
+title();cloudStartSync();
 </script>
