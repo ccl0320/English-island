@@ -477,9 +477,9 @@ let S={name:'',cleared:0,dex:[]};
 try{const s=JSON.parse(localStorage.getItem('rq-save')||'null');if(s&&typeof s.cleared==='number')S=s}catch(e){}
 if(!S.diary)S.diary=[...Array(Math.min(S.cleared||0,8)).keys()];
 // ---- Cloud save: log in with a username + password so the same progress follows the child to any device ----
-// Fill in from Firebase console > Project settings > Your apps > Web app config. Leave blank to keep device-only saves.
-const CLOUD={apiKey:'',projectId:''};
-const cloudOn=()=>!!(CLOUD.apiKey&&CLOUD.projectId);
+// Fill in from Supabase > Project Settings > API (Project URL + anon/publishable key). Leave blank to keep device-only saves.
+const CLOUD={url:'',key:''};
+const cloudOn=()=>!!(CLOUD.url&&CLOUD.key);
 let ACC=null;try{ACC=JSON.parse(localStorage.getItem('rq-account')||'null')}catch(e){}
 const accSave=()=>{try{ACC?localStorage.setItem('rq-account',JSON.stringify(ACC)):localStorage.removeItem('rq-account')}catch(e){}};
 const userMail=u=>u.toLowerCase()+'@players.english-island.app';
@@ -487,24 +487,23 @@ const cleanUser=u=>String(u||'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
 const SYNC={timer:0,busy:false,dirty:false,state:''};
 function save(){S.t=Date.now();try{localStorage.setItem('rq-save',JSON.stringify(S))}catch(e){}if(ACC&&cloudOn()){SYNC.dirty=true;try{localStorage.setItem('rq-dirty','1')}catch(e){}clearTimeout(SYNC.timer);SYNC.timer=setTimeout(cloudPush,2500)}}
 try{SYNC.dirty=localStorage.getItem('rq-dirty')==='1'}catch(e){}
+const sbBase=()=>CLOUD.url.replace(/\/+$/,'');
 async function authCall(path,body){
- const r=await fetch('https://identitytoolkit.googleapis.com/v1/accounts:'+path+'?key='+CLOUD.apiKey,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
- const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error((j.error&&j.error.message)||'NETWORK');return j}
+ let r;try{r=await fetch(sbBase()+'/auth/v1/'+path,{method:'POST',headers:{'Content-Type':'application/json',apikey:CLOUD.key},body:JSON.stringify(body)})}catch(e){throw new Error('NETWORK')}
+ const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error_code||j.code||j.msg||j.error_description||'NETWORK');return j}
+const takeSession=j=>{ACC.token=j.access_token;ACC.refreshToken=j.refresh_token;ACC.exp=Date.now()+(+j.expires_in||3600)*1000;accSave()};
 async function idToken(){
  if(!ACC)throw new Error('NO_ACCOUNT');
- if(ACC.idToken&&ACC.exp>Date.now()+60000)return ACC.idToken;
- const r=await fetch('https://securetoken.googleapis.com/v1/token?key='+CLOUD.apiKey,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(ACC.refreshToken)});
- const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error((j.error&&j.error.message)||'NETWORK');
- ACC.idToken=j.id_token;ACC.refreshToken=j.refresh_token;ACC.exp=Date.now()+(+j.expires_in||3600)*1000;accSave();return ACC.idToken}
-const docUrl=()=>`https://firestore.googleapis.com/v1/projects/${CLOUD.projectId}/databases/(default)/documents/saves/${ACC.uid}`;
+ if(ACC.token&&ACC.exp>Date.now()+60000)return ACC.token;
+ takeSession(await authCall('token?grant_type=refresh_token',{refresh_token:ACC.refreshToken}));return ACC.token}
+const restHead=async()=>({apikey:CLOUD.key,Authorization:'Bearer '+await idToken(),'Content-Type':'application/json'});
 async function cloudGet(){
- const r=await fetch(docUrl(),{headers:{Authorization:'Bearer '+await idToken()}});
- if(r.status===404)return null;if(!r.ok)throw new Error('NETWORK');
- const j=await r.json();try{return JSON.parse(j.fields.data.stringValue)}catch(e){return null}}
+ const r=await fetch(sbBase()+'/rest/v1/saves?select=data&user_id=eq.'+ACC.uid,{headers:await restHead()});
+ if(!r.ok)throw new Error('NETWORK');const rows=await r.json();return rows[0]?rows[0].data:null}
 async function cloudPush(){
  if(!ACC||!cloudOn()||SYNC.busy)return;SYNC.busy=true;cloudMark('…');
- try{const r=await fetch(docUrl(),{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:'Bearer '+await idToken()},
-   body:JSON.stringify({fields:{data:{stringValue:JSON.stringify(S)},user:{stringValue:ACC.user},t:{integerValue:String(S.t||Date.now())}}})});
+ try{const r=await fetch(sbBase()+'/rest/v1/saves?on_conflict=user_id',{method:'POST',headers:{...await restHead(),Prefer:'resolution=merge-duplicates,return=minimal'},
+   body:JSON.stringify({user_id:ACC.uid,username:ACC.user,data:S,updated_at:new Date(S.t||Date.now()).toISOString()})});
   if(!r.ok)throw new Error('NETWORK');SYNC.dirty=false;try{localStorage.removeItem('rq-dirty')}catch(e){}cloudMark('✓')}
  catch(e){cloudMark('⚠')}finally{SYNC.busy=false}}
 function cloudMark(s){SYNC.state=s;document.querySelectorAll('.cloudst').forEach(e=>e.textContent=s)}
@@ -523,12 +522,16 @@ async function cloudStartSync(){
  catch(e){cloudMark('⚠')}}
 addEventListener('online',()=>{if(SYNC.dirty)cloudPush()});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&SYNC.dirty){clearTimeout(SYNC.timer);cloudPush()}});
-const AUTH_MSG={EMAIL_EXISTS:['That name is taken.','這個帳號名稱已經有人用了，換一個試試。'],INVALID_LOGIN_CREDENTIALS:['Name or password is wrong.','帳號或密碼不對。'],INVALID_PASSWORD:['Password is wrong.','密碼不對。'],EMAIL_NOT_FOUND:['No account with that name.','找不到這個帳號，要不要建立新帳號？'],
- USER_DISABLED:['This account is turned off.','這個帳號已被停用。'],NETWORK:['No internet right now.','現在連不上網路，請稍後再試。'],OPERATION_NOT_ALLOWED:['Log in is not set up yet.','Firebase 還沒開啟「電子郵件/密碼」登入。']};
-function authMsg(code){const k=Object.keys(AUTH_MSG).find(k=>String(code).startsWith(k));if(String(code).startsWith('TOO_MANY'))return ['Too many tries. Wait a little.','嘗試太多次，請等一下再試。'];if(String(code).startsWith('WEAK_PASSWORD'))return ['Password needs 6 or more letters or numbers.','密碼至少要 6 個字。'];return AUTH_MSG[k]||AUTH_MSG.NETWORK}
+const AUTH_MSG={user_already_exists:['That name is taken.','這個帳號名稱已經有人用了，換一個試試。'],email_exists:['That name is taken.','這個帳號名稱已經有人用了，換一個試試。'],
+ invalid_credentials:['Name or password is wrong.','帳號或密碼不對。'],email_not_confirmed:['Account not ready yet.','Supabase 還開著「Confirm email」，請到後台關掉。'],
+ weak_password:['Password needs 6 or more letters or numbers.','密碼至少要 6 個字。'],over_request_rate_limit:['Too many tries. Wait a little.','嘗試太多次，請等一下再試。'],
+ over_email_send_rate_limit:['Too many tries. Wait a little.','嘗試太多次，請等一下再試。（若一直出現，請確認已關掉「Confirm email」）'],
+ signup_disabled:['New accounts are turned off.','Supabase 後台關閉了註冊，請開啟「Allow new users to sign up」。'],email_provider_disabled:['Log in is not set up yet.','Supabase 還沒開啟 Email 登入方式。'],
+ user_banned:['This account is turned off.','這個帳號已被停用。'],NETWORK:['No internet right now.','現在連不上網路，請稍後再試。']};
+function authMsg(code){code=String(code);if(/already registered/i.test(code))code='user_already_exists';if(/invalid login/i.test(code))code='invalid_credentials';return AUTH_MSG[code]||AUTH_MSG.NETWORK}
 function accountScreen(back){
  if(!cloudOn()){app.innerHTML=`<div class="panel title acct"><h1>☁️ Save to the Cloud</h1>
-  <p>Cloud save is not set up yet.</p><p class="teacher">給家長／老師：雲端存檔需要先在 Firebase 建立專案，並把設定填進 index.html 的 CLOUD。設定前，進度只會存在這台裝置。</p>
+  <p>Cloud save is not set up yet.</p><p class="teacher">給家長／老師：雲端存檔需要先在 Supabase 建立專案，並把設定填進 index.html 的 CLOUD。設定前，進度只會存在這台裝置。</p>
   <button class="btn" id="aback">Back</button></div>`;document.getElementById('aback').onclick=back;return}
  if(ACC){app.innerHTML=`<div class="panel title acct"><h1>☁️ Hi, ${esc(ACC.user)}!</h1>
   <p>Your quest is saved in the cloud. Log in with the same name on another phone or tablet to keep playing.</p>
@@ -545,7 +548,7 @@ function accountScreen(back){
   <label for="ap">Password</label><input id="ap" type="password" maxlength="30" autocomplete="current-password" placeholder="6 or more">
   <div><button class="btn" id="ain">Log in</button> <button class="btn soft" id="anew">New account</button></div>
   <p class="amsg" id="amsg" role="alert"></p>
-  <p class="teacher">給家長：帳號名稱只用英文字母和數字（3–16 字），密碼至少 6 字。不需要 email。請幫孩子記下帳號密碼，忘記密碼時可由老師在 Firebase 後台重設。<br>登入時，這台裝置上已有的進度會自動搬到帳號裡。</p>
+  <p class="teacher">給家長：帳號名稱只用英文字母和數字（3–16 字），密碼至少 6 字。不需要 email。請幫孩子記下帳號密碼，忘記密碼時可由老師在 Supabase 後台重設。<br>登入時，這台裝置上已有的進度會自動搬到帳號裡。</p>
   <button class="btn soft" id="aback">Back</button></div>`;
  document.getElementById('aback').onclick=back;
  const msg=(en,zh)=>{document.getElementById('amsg').innerHTML=`<span class="en">${esc(en)}</span>${zh?' '+esc(zh):''}`};
@@ -554,8 +557,9 @@ function accountScreen(back){
   if(u.length<3)return msg('Name needs 3 or more letters.','帳號名稱至少 3 個英文字母或數字。');
   if(p.length<6)return msg('Password needs 6 or more.','密碼至少要 6 個字。');
   document.querySelectorAll('.acct .btn').forEach(b=>b.disabled=true);msg('Please wait…');
-  try{const j=await authCall(isNew?'signUp':'signInWithPassword',{email:userMail(u),password:p,returnSecureToken:true});
-   ACC={user:u,uid:j.localId,idToken:j.idToken,refreshToken:j.refreshToken,exp:Date.now()+(+j.expiresIn||3600)*1000};accSave();
+  try{const j=await authCall(isNew?'signup':'token?grant_type=password',{email:userMail(u),password:p});
+   if(!j.access_token)throw new Error('email_not_confirmed');
+   ACC={user:u,uid:j.user.id};takeSession(j);
    const c=isNew?null:await cloudGet().catch(()=>null);
    if(c&&hasProgress(c)&&hasProgress(S)&&JSON.stringify(c.dex)!==JSON.stringify(S.dex)){mergeChoice(c,back);return}
    if(c&&hasProgress(c))adopt(c);else{if(!S.name)S.name=u[0].toUpperCase()+u.slice(1).replace(/\d+$/,'')}
