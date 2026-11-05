@@ -22,6 +22,7 @@ public class MainActivity extends Activity {
     private WebView web;
     private TextToSpeech tts;
     private volatile boolean ttsReady = false;
+    private Updater updater;
 
     /** Android WebView has no speechSynthesis, so the game calls this instead. */
     public class Bridge {
@@ -71,6 +72,9 @@ public class MainActivity extends Activity {
         web.setWebChromeClient(new WebChromeClient());
         hideBars();
         web.loadUrl("https://appassets.androidplatform.net/assets/www/index.html");
+
+        updater = new Updater(this);
+        updater.check();
     }
 
     private void hideBars() {
@@ -107,6 +111,7 @@ public class MainActivity extends Activity {
         super.onResume();
         web.onResume();
         web.evaluateJavascript("try{bgm(BGM.want)}catch(e){}", null);
+        if (updater != null) updater.resume();
     }
 
     @Override
