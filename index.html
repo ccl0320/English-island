@@ -57,6 +57,18 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pip);outline-of
 .zone small{opacity:.9;font-size:.8rem}
 .zone.locked{opacity:.45;cursor:not-allowed}
 .zone.next{outline:4px dashed var(--pip);outline-offset:3px}
+.diffpick h3{font-family:var(--display);margin:0 0 8px}.diffs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.diff{border-radius:16px;padding:10px 8px;background:var(--paper);border:3px solid transparent;display:flex;flex-direction:column;gap:2px;text-align:center;box-shadow:0 4px 0 rgba(0,0,0,.12);color:var(--ink)}
+.diff b{font-family:var(--display);font-size:1rem}.diff span{font-size:.85rem;font-weight:700}.diff small{font-size:.72rem;opacity:.8;line-height:1.25}.diff em{font-style:normal;font-size:.75rem;font-weight:700;color:#B06A00}
+.diff.on{border-color:var(--pip);background:#FFF6D8;transform:translateY(-2px)}.diff.d3.on{border-color:#E5484D;background:#FFE9E6}.dbest{display:block;margin-top:6px;opacity:.75}
+.answer.typed{display:flex;flex-wrap:wrap;gap:3px;justify-content:center}
+.tslot{width:26px;height:38px;border-radius:7px;background:var(--paper);border:2px dashed var(--fog-deep);display:grid;place-items:center;font-family:var(--word);font-size:1.4rem;font-weight:700}
+.tslot.cur{border:3px solid var(--pip);animation:tpulse 1s infinite}@keyframes tpulse{50%{transform:scale(1.12)}}.tslot.filled{border-style:solid;border-color:var(--good,#2E9E5B)}.tslot.sp{background:#E8F4EC}
+.kb{display:flex;flex-direction:column;gap:6px;align-items:center;transition:filter .3s}.kb.fog{filter:blur(6px) grayscale(1);opacity:.6}
+.krow{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;max-width:560px}
+.key{min-width:38px;height:44px;border-radius:10px;background:var(--paper);font-family:var(--word);font-size:1.4rem;font-weight:700;box-shadow:0 3px 0 var(--fog-deep)}
+.key.wide{min-width:104px;font-family:var(--display);font-size:1rem}.key.pm{min-width:44px;background:#FFF2C4}
+.key.glow{outline:3px solid var(--pip);background:#FFF6D8}.key.wrong{animation:shake .35s}
 .zone .n{font-family:var(--display);font-size:.85rem;opacity:.85}
 /* story */
 .story{display:flex;gap:14px;align-items:flex-start}
@@ -747,23 +759,32 @@ function unitGrid(ui){
  const u=UNITS[ui];
  app.innerHTML=hud()+`<div class="panel" style="background:${u.color};color:#fff"><h2 style="font-size:1.8rem">${esc(u.zh)}</h2><div>${esc(u.en)}</div></div>
  <div class="map">${u.subs.map((zi,k)=>{const z=ZONES[zi],st=zi<S.cleared?'done':zi===S.cleared?'next':'locked';
-  return `<button class="zone ${st}" data-i="${zi}" ${st==='locked'?'aria-disabled="true"':''} style="${st==='done'?`background:${z.color}`:''}"><span class="n">Stage ${k+1}</span><b>${esc(z.zh)}</b><small>${esc(z.en)}</small></button>`}).join('')}</div>
+  return `<button class="zone ${st}" data-i="${zi}" ${st==='locked'?'aria-disabled="true"':''} style="${st==='done'?`background:${z.color}`:''}"><span class="n">Stage ${k+1}</span><b>${esc(z.zh)}</b><small>${esc(z.en)}${diffBadge(zi)}</small></button>`}).join('')}</div>
  <div class="row"><button class="btn soft" id="back">Back to map</button></div>`;
  app.querySelectorAll('.zone').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;if(i<=S.cleared)story(i)});
  document.getElementById('back').onclick=mapGrid;
 }
+// ---------- difficulty: chosen before each stage ----------
+// 1 Easy = some letters given + word cards; 2 Medium = spell every letter yourself; 3 Hard = also type the whole sentence (letters, spaces, . ? !)
+const DIFF=[null,{n:'Easy',zh:'初級',d:'Some letters are given. Put the word cards in order.'},{n:'Medium',zh:'中級',d:'Spell every letter of the word by yourself.'},{n:'Hard',zh:'高級',d:'Type every letter of the sentence too, with spaces and . ? !'}];
+const DXP=[1,1,1.5,2];// XP multiplier per difficulty
+const curDiff=()=>(P&&P.st&&P.st.diff)||1;
+const diffBadge=zi=>{const b=S.dbest&&S.dbest[zi];return b>1?(b===3?' 🔥Hard':' 💪Medium'):''};
 function story(i){
  const z=ZONES[i];
  const intro=STORY[i]?STORY[i].intro.map(nameIn).join(' '):z.intro[0];
  app.innerHTML=hud(z)+`<div class="story">${PIP}<div class="bubble"><span class="en">${esc(intro)}</span></div></div>
+ <div class="panel diffpick"><h3>Choose your level</h3><div class="diffs">${[1,2,3].map(d=>`<button class="diff d${d}${(S.diff||1)===d?' on':''}" data-d="${d}"><b>${'⭐'.repeat(d)} ${DIFF[d].n}</b><span>${DIFF[d].zh}</span><small>${esc(DIFF[d].d)}</small>${d>1?`<em>XP ×${DXP[d]}</em>`:''}</button>`).join('')}</div>${S.dbest&&S.dbest[i]?`<small class="dbest">Best clear here: ${DIFF[S.dbest[i]].n}</small>`:''}</div>
  <div class="row"><button class="btn soft" id="hear">Listen</button><button class="btn" id="go">Go to the island</button></div>`;
  speak(intro);
+ app.querySelectorAll('.diff').forEach(b=>b.onclick=()=>{S.diff=+b.dataset.d;save();app.querySelectorAll('.diff').forEach(x=>x.classList.toggle('on',x===b));sfx('coin');speak(DIFF[S.diff].n)});
  document.getElementById('hear').onclick=()=>speak(intro);
  document.getElementById('go').onclick=()=>arena(i,true);
 }
 function clear(zi){
- const run=P&&P.run&&P.zi===zi?P.run:null;
+ const run=P&&P.run&&P.zi===zi?P.run:null,diff=curDiff(),dx=DXP[diff];
  P=null;
+ S.dbest=S.dbest||{};if(diff>(S.dbest[zi]||0)){S.dbest[zi]=diff;save()}
  const stars=run?(run.miss<=2?3:run.miss<=6?2:1):0;if(stars){S.stars=S.stars||{};S.stars[zi]=Math.max(S.stars[zi]||0,stars);save()}
  const z=ZONES[zi],ui=unitOf(zi),u=UNITS[ui];
  if(S.cleared===zi){S.cleared=zi+1;save()}
@@ -773,7 +794,7 @@ function clear(zi){
  const k=u.subs.indexOf(zi)+1;
  app.innerHTML=hud(z)+`<div class="panel arena" style="background:${unitEnd?u.color:z.color};color:#fff">
   <h2 style="font-size:2rem">Crystal shard ${k} / 4${unitEnd?'<br>You made '+esc(u.crystal)+'! Island '+(ui+1)+' clear!':''}</h2>
-  ${run?`<div class="result"><div class="stars" aria-label="${stars} stars">${[1,2,3].map(i=>`<i class="${i<=stars?'on':''}" style="animation-delay:${i*.3}s">★</i>`).join('')}</div><div class="stats"><span>✏️ ${run.words} words spelled</span><span>📝 ${run.sents} sentences</span><span>🔥 Best combo ${run.best}</span><span>🪙 +${run.coins} coins</span>${stars?`<span>🌟 +${stars*10} XP</span>`:''}</div><small>${stars<3?'Fewer mistakes, more stars! Play this stage again from the island map.':'Perfect! 3 stars!'}</small></div>`:''}</div>
+  ${run?`<div class="result"><div class="stars" aria-label="${stars} stars">${[1,2,3].map(i=>`<i class="${i<=stars?'on':''}" style="animation-delay:${i*.3}s">★</i>`).join('')}</div><div class="stats"><span>✏️ ${run.words} words spelled</span><span>📝 ${run.sents} sentences</span><span>🔥 Best combo ${run.best}</span><span>🪙 +${run.coins} coins</span>${stars?`<span>🌟 +${Math.round(stars*10*dx)} XP</span>${diff>1?`<span>${diff===3?'🔥':'💪'} ${DIFF[diff].n} level</span>`:''}`:''}</div><small>${stars<3?'Fewer mistakes, more stars! Play this stage again from the island map.':'Perfect! 3 stars!'}</small></div>`:''}</div>
   ${diaryHtml(zi,dNew)}
   <div class="story">${PIP}<div class="bubble">${(STORY[zi]?STORY[zi].outro:[z.outro]).map(l=>`<span class="en" style="display:block">${esc(nameIn(l))}</span>`).join('')}</div></div>
   ${choiceHtml(zi)}
@@ -782,7 +803,7 @@ function clear(zi){
   const lines=[esc(ZONES[zi].keeper)+': "'+esc(c[k*2+1])+'"'+(k===0?' 💛 +1 friend':'')];if(zi===7)lines.push(...endingLine().map(esc));
   document.getElementById('choice').innerHTML=`<h3>You: "${esc(c[k*2])}"</h3>${lines.map(l=>`<p>${l}</p>`).join('')}`;speak(c[k*2]+' '+c[k*2+1]);
   document.getElementById('gorow').style.display=''});
- speak(unitEnd?`You did it, ${S.name}!`:'Great job!');if(stars)setTimeout(()=>gainXP(stars*10),900);
+ speak(unitEnd?`You did it, ${S.name}!`:'Great job!');if(stars)setTimeout(()=>gainXP(stars*10*dx),900);
  bindSay();document.getElementById('go').onclick=()=>storybook(bookOf(zi),()=>unitEnd?map():unitMap(ui));
 }
 // ---------- visual detail helpers ----------
@@ -907,7 +928,7 @@ function rebuild(){
   u.subs.forEach((zi,k)=>{const a=-Math.PI*.75+k*Math.PI/2.6,st=zi<S.cleared?'done':zi===S.cleared?'next':'locked';
    const pad=new T.Mesh(new T.CylinderGeometry(.27,.3,.16,14),mat(st==='done'?ZONES[zi].color:st==='next'?'#F2A93B':'#B9C2CA'));
    pad.position.set(Math.cos(a)*1.3,.88,Math.sin(a)*1.3+.2);pad.userData.zi=zi;g.add(pad);if(st==='next')W.bob.push(pad);
-   if(W.mode==='unit'&&W.unit===ui)addLabel(lab,new T.Vector3(x+pad.position.x,1.15,z+pad.position.z),`${k+1}. ${ZONES[zi].zh}`,st==='done'?(S.stars&&S.stars[zi]?'★'.repeat(S.stars[zi])+'☆'.repeat(3-S.stars[zi]):'Cleared'):st==='next'?'Tap to start':'Locked',st,()=>{if(zi<=S.cleared)story(zi)})});
+   if(W.mode==='unit'&&W.unit===ui)addLabel(lab,new T.Vector3(x+pad.position.x,1.15,z+pad.position.z),`${k+1}. ${ZONES[zi].zh}`,st==='done'?(S.stars&&S.stars[zi]?'★'.repeat(S.stars[zi])+'☆'.repeat(3-S.stars[zi])+diffBadge(zi):'Cleared'+diffBadge(zi)):st==='next'?'Tap to start':'Locked',st,()=>{if(zi<=S.cleared)story(zi)})});
   if(W.mode==='map')addLabel(lab,new T.Vector3(x,3.2,z),`Island ${ui+1} ${u.zh}`,!ready?'Coming soon':done?'Got '+u.crystal:open?`Stage ${u.subs.filter(i=>i<S.cleared).length} / 4`:'Foggy',!ready||!open?'locked':done?'done':'next',()=>goUnit(ui));
   W.isl.add(g);
  });
@@ -1335,8 +1356,8 @@ float g=pow(max(sin(vW.x*1.7+uTime*2.1)*sin(vW.z*1.9-uTime*1.6),0.0),26.0);c+=g*
 function arenaLeft(){return P.mons.filter(x=>x.alive).length}
 function nextMon(){return P.mons.find(x=>x.alive)}
 function arena(zi,fresh){
- const w=getWorld();if(!w){resetSkills();const z=ZONES[zi];return battle(zi,pickWords(z),0,{hearts:MAXH(),reward:30})}
- const isNew=fresh||!P||P.zi!==zi;if(isNew){P=buildArena(zi);resetSkills()}
+ const w=getWorld();if(!w){resetSkills();const z=ZONES[zi];return battle(zi,pickWords(z),0,{hearts:MAXH(),reward:30,diff:S.diff||1})}
+ const isNew=fresh||!P||P.zi!==zi;if(isNew){P=buildArena(zi);P.st.diff=S.diff||1;resetSkills()}
  W.mode='arena';W.unit=P.ui;P.lock=false;P.target=null;P.follow=null;P.snap=isNew;P.grace=isNew?1.5:1.2;if(!W.dragged)W.yaw=0;
  const z=ZONES[zi];
  app.innerHTML=hud(z)+`<div class="hud"><span id="left"></span><span class="hearts">${'♥'.repeat(P.st.hearts)}${'♡'.repeat(Math.max(0,MAXH()-P.st.hearts))}</span></div>
@@ -1531,9 +1552,9 @@ function battle(zi,list,k,st){
  const letters=[...word];
  let mode=st.chest||st.noMix?'fill':['fill','scramble','listen'][(QN++)%3];
  if(mode==='scramble'&&(word.includes(' ')||word.length>9))mode='listen';
- const need=mode==='scramble'?letters.map((c,i)=>i).filter(i=>/[a-z]/.test(letters[i])):blanksFor(letters,isFull);
+ const need=mode==='scramble'?letters.map((c,i)=>i).filter(i=>/[a-z]/.test(letters[i])):blanksFor(letters,isFull||(st.diff||1)>=2);
  const size=list.length>2?2:1;
- let pool=need.map(i=>letters[i]);if(mode!=='scramble'){const ex=shuffle([...CVC_DISTRACT].filter(c=>!pool.includes(c)));while(pool.length<Math.max(6,need.length+2))pool.push(ex.pop())}
+ let pool=need.map(i=>letters[i]);if(mode!=='scramble'||(st.diff||1)>=2){const ex=shuffle([...CVC_DISTRACT].filter(c=>!pool.includes(c)));while(pool.length<Math.max(6,need.length+2))pool.push(ex.pop())}
  pool=shuffle(pool);const n0=MISSN;
  const hpNow=(list.length-k)/list.length;
  let pos=0,miss=0;
@@ -1703,15 +1724,19 @@ function pickSent(zi){const L=SENT[zi]||[];if(!L.length)return ZONES[zi].gate[0]
  const g=c[Math.floor(Math.random()*c.length)];used.push(g.a);if(!seen.includes(zi+'|'+g.a)){seen.push(zi+'|'+g.a);save()}return g}
 function chestFx(){dly('chest');sfx('win');const b=document.querySelector('#foe .fbody');if(b)b.innerHTML='<div class="chestfoe open">💰</div>'}
 
+function kbHtml(fog){const L='abcdefghijklmnopqrstuvwxyz';
+ return `<div class="kb${fog?' fog':''}" id="deck"><div class="krow">${[...L].map(c=>`<button class="key" data-c="${c}" aria-label="letter ${c}">${c}</button>`).join('')}</div>
+ <div class="krow marks"><button class="key wide" data-c=" " aria-label="space">space</button>${["'",',','.','?','!'].map(c=>`<button class="key pm" data-c="${c}" aria-label="${c}">${c}</button>`).join('')}</div></div>`}
 function sentQ(zi,g,o){
  const z=ZONES[zi],st=o.st||{hearts:MAXH()};
  const ans=nameIn(g.a),parts=tokens(ans),end=parts[parts.length-1];
  const low=parts.map(p=>p.toLowerCase());
+ const hard=(st.diff||1)>=3;let kw=false;
  const extra=shuffle(z.words.map(w=>w[0]).filter(w=>!w.includes(' ')&&!low.includes(w)))[0];
  const alt={'.':'?','?':'.','!':'?'}[end];
  const deck=shuffle([...parts.map((p,i)=>({p,i})),...(extra?[{p:extra,i:-1}]:[]),...(alt?[{p:alt,i:-1}]:[])]);
  // where the magic word sits in the sentence (it may be two words, like "living room")
- let ki=-1,kn=0;if(o.spell&&g.key){const kw=g.key.split(' ');kn=kw.length;for(let i=0;i+kn<=low.length;i++)if(low.slice(i,i+kn).join(' ')===g.key){ki=i;break}}
+ let ki=-1,kn=0;if(o.spell&&g.key&&!hard){const kw=g.key.split(' ');kn=kw.length;for(let i=0;i+kn<=low.length;i++)if(low.slice(i,i+kn).join(' ')===g.key){ki=i;break}}
  let built=[];const q0=MISSN;
  app.innerHTML=hud(z)+`<div class="panel arena">
   <div class="hud" style="width:100%"><span>${esc(o.label||'')}</span>${o.dots||`<span class="hearts">${heartsTxt(st)}</span>`}</div>
@@ -1721,9 +1746,9 @@ function sentQ(zi,g,o){
   <button class="say" id="say">Listen</button>
   <div class="answer" id="ans" aria-label="your sentence"></div>
   ${skillsHtml()}<div class="timer" id="timer" aria-label="time left"></div>
-  <div class="hint" id="hint">${o.fog?'The boss made fog! Tap Listen to blow it away!':o.hideQ?'No words this time! Listen to the boss, then answer.':ki>=0?'Step 1: Put the cards in order. Step 2: Spell the magic word!':'Put the cards in order. The end mark ( . or ? ) is a card too!'}</div>
-  <div class="row${o.fog?' fog':''}" id="deck">${deck.map((d,i)=>`<button class="card${isMark(d.p)?' pc':''}" data-k="${i}">${esc(d.p)}</button>`).join('')}</div>
-  <div class="row" id="btns"><button class="btn soft" id="undo">Undo</button><button class="btn" id="ok">Answer</button></div></div>`;
+  <div class="hint" id="hint">${hard?(o.fog?'The boss made fog! Tap Listen to blow it away!':o.hideQ?'Listen to the boss, then type the answer!':'🔥 Hard: type the whole answer. Every letter, every space and the end mark!'):o.fog?'The boss made fog! Tap Listen to blow it away!':o.hideQ?'No words this time! Listen to the boss, then answer.':ki>=0?'Step 1: Put the cards in order. Step 2: Spell the magic word!':'Put the cards in order. The end mark ( . or ? ) is a card too!'}</div>
+  ${hard?kbHtml(o.fog):`<div class="row${o.fog?' fog':''}" id="deck">${deck.map((d,i)=>`<button class="card${isMark(d.p)?' pc':''}" data-k="${i}">${esc(d.p)}</button>`).join('')}</div>`}
+  <div class="row" id="btns">${hard?'<button class="btn soft" id="hearA">Hear the answer</button>':'<button class="btn soft" id="undo">Undo</button><button class="btn" id="ok">Answer</button>'}</div></div>`;
  app.dataset.ans=parts.join('|');
  speak(o.say||g.q);
  const ansEl=document.getElementById('ans'),hint=document.getElementById('hint');
@@ -1736,12 +1761,13 @@ function sentQ(zi,g,o){
  const tm=battleTimer(o.fog?17:10,()=>{hurt(o.chest?"Time's up! The lock shuts. Try again!":"Time's up! The monster attacks!");speak(g.q)});
  const render=()=>{ansEl.innerHTML=parts.map((p,i)=>built[i]!==undefined?`<span class="card${isMark(p)?' pc':''}">${esc(deck[built[i]].p)}</span>`:`<span class="aslot${isMark(p)?' pc':''}"></span>`).join('');
   app.querySelectorAll('#deck .card').forEach(b=>{const u=built.includes(+b.dataset.k);b.classList.toggle('used',u);b.style.visibility=u?'hidden':''})};
- render();
+ if(!hard)render();
  let pipFn=()=>{clearFog();if(!built.every((k,i)=>deck[k].p===parts[i])){built=[];render()}if(built.length>=parts.length)return false;const want=parts[built.length];
   const b=[...app.querySelectorAll('#deck .card')].find(x=>!built.includes(+x.dataset.k)&&deck[+x.dataset.k].p===want);if(!b)return false;b.click();hint.textContent=built.length<parts.length?'Pip: "Hoo! This card comes next!"':'Pip: "Now tap Answer!"';return true};
  bindSkills(()=>pipFn,st);
  app.querySelectorAll('#deck .card').forEach(b=>b.onclick=()=>{if(fogOn){hint.textContent='Too foggy! Tap Listen to blow the fog away!';return}const k=+b.dataset.k;if(built.includes(k)||built.length>=parts.length)return;built.push(k);tm.reset();
   const p=deck[k].p;if(isMark(p))speak(p==='?'?'question mark':p==='!'?'exclamation mark':'period',1);else speak(p.replace(/[,]/g,''),1);render()});
+ if(hard)typeStage();else{
  document.getElementById('undo').onclick=()=>{built.pop();render()};
  document.getElementById('ok').onclick=()=>{
   if(built.length<parts.length){hint.textContent=`Fill every box! There are ${parts.length} boxes. The end mark gets a box too.`;return}
@@ -1753,10 +1779,43 @@ function sentQ(zi,g,o){
    const first=[...app.querySelectorAll('#deck .card')].find(b=>deck[+b.dataset.k].i===0);
    if(first){first.classList.add('tile','glow');setTimeout(()=>first.classList.remove('tile','glow'),2400)}
   }
- };
+ };}
+ // Hard: type the whole sentence, one character at a time (letters, spaces, apostrophes and end marks all count)
+ function typeStage(){
+  const chars=[...ans],kb=document.getElementById('deck');let pos=0,miss=0;
+  const norm=c=>c==='\u2019'?"'":c.toLowerCase();
+  const nameOf=c=>c===' '?'space':c==='.'?'period':c==='?'?'question mark':c==='!'?'exclamation mark':c===','?'comma':c==="'"?'apostrophe':c;
+  const show=c=>c===' '?'SPACE':/[a-z]/i.test(c)?c.toUpperCase():c;
+  ansEl.className='answer typed';
+  ansEl.innerHTML=chars.map((c,i)=>`<span class="tslot${i===0?' cur':''}" data-i="${i}"></span>`).join('');
+  document.getElementById('hearA').onclick=()=>speak(ans);
+  const press=(key,btn)=>{
+   if(fogOn){hint.textContent='Too foggy! Tap Listen to blow the fog away!';return}
+   if(pos>=chars.length)return;const want=chars[pos];
+   if(norm(key)===norm(want)){
+    if(/[a-z]/i.test(want))speak(want.toLowerCase(),1);else if(want!==' ')speak(nameOf(want),1);
+    const s=ansEl.querySelector(`.tslot[data-i="${pos}"]`);s.textContent=want===' '?'':want;s.classList.add('filled');if(want===' ')s.classList.add('sp');s.classList.remove('cur');
+    pos++;miss=0;tm.reset();kb.querySelectorAll('.key.glow').forEach(x=>x.classList.remove('glow'));
+    const nx=ansEl.querySelector(`.tslot[data-i="${pos}"]`);if(nx)nx.classList.add('cur');
+    if(pos>=chars.length){tm.stop();document.removeEventListener('keydown',onKey);
+     if(g.key&&z.words.some(w=>w[0]===g.key)){kw=true;if(!S.dex.includes(g.key)){S.dex.push(g.key);save()}}
+     setTimeout(()=>{speak(ans);win()},350)}
+    else hint.textContent='Good! Keep going.';
+   }else{
+    miss++;if(btn){btn.classList.remove('wrong');void btn.offsetWidth;btn.classList.add('wrong')}
+    hurt('Oops! Pip says: '+show(want));speak(nameOf(want),1);addMiss('s',zi,g.a);
+    if(miss>=2){const gk=[...kb.querySelectorAll('.key')].find(x=>norm(x.dataset.c)===norm(want));if(gk)gk.classList.add('glow')}
+   }};
+  kb.querySelectorAll('.key').forEach(b=>b.onclick=()=>press(b.dataset.c,b));
+  function onKey(e){if(!document.body.contains(kb)){document.removeEventListener('keydown',onKey);return}
+   if(e.ctrlKey||e.metaKey||e.altKey||e.key.length!==1)return;e.preventDefault();
+   press(e.key,[...kb.querySelectorAll('.key')].find(x=>norm(x.dataset.c)===norm(e.key)))}
+  document.addEventListener('keydown',onKey);
+  pipFn=()=>{clearFog();if(pos>=chars.length)return false;const want=chars[pos];press(want,null);if(pos<chars.length)hint.textContent='Pip: "Hoo! Next is '+show(chars[pos])+'!"';return true};
+ }
  function spellStage(){
   const word=parts.slice(ki,ki+kn).join(' '),letters=[...word];
-  const wz=z.words.find(w=>w[0]===g.key);const need=blanksFor(letters.map(c=>c),wz?!!wz[3]:false).filter(i=>/[a-z]/.test(letters[i]));
+  const wz=z.words.find(w=>w[0]===g.key);const need=blanksFor(letters.map(c=>c),(wz&&!!wz[3])||(st.diff||1)>=2).filter(i=>/[a-z]/.test(letters[i]));
   let pool=need.map(i=>letters[i]);const ex=shuffle([...CVC_DISTRACT].filter(c=>!pool.includes(c)));while(pool.length<Math.max(6,need.length+2))pool.push(ex.pop());pool=shuffle(pool);
   let pos=0,miss=0;
   ansEl.innerHTML=parts.map((p,i)=>i===ki?`<span class="kword">${letters.map((c,j)=>need.includes(j)?`<span class="slot kslot" data-i="${j}"></span>`:`<span class="kslot fixed">${c===' '?'&nbsp;':esc(c)}</span>`).join('')}</span>`:i>ki&&i<ki+kn?'':`<span class="card${isMark(p)?' pc':''}">${esc(p)}</span>`).join('');
@@ -1776,7 +1835,7 @@ function sentQ(zi,g,o){
  }
  function win(){
   if(o.hideQ){const qt=document.getElementById('qtext');if(qt){qt.textContent=g.q;qt.classList.remove('hidq')}}
-  dly('sents');if(ki>=0)dly('words');if(P&&P.run){P.run.sents++;if(ki>=0)P.run.words++}setTimeout(()=>comboHit(MISSN===q0),250);
+  dly('sents');if(ki>=0||kw)dly('words');if(P&&P.run){P.run.sents++;if(ki>=0||kw)P.run.words++}setTimeout(()=>comboHit(MISSN===q0),250);
   if(o.onRight)return o.onRight(hint);
   FX.hero();const fh=document.getElementById('foehp');if(fh)fh.style.width='0%';
   setTimeout(()=>o.chest?chestFx():FX.purify(zi,false),450);setTimeout(()=>addCoins(o.reward||10),700);
@@ -1926,7 +1985,7 @@ function daily(){const t=today();S.days=S.days||[];if(!S.days.includes(t)){S.day
   const pool=DAILY.map((x,i)=>i).filter(i=>(DAILY[i].k!=='camp'||S.cleared>0)&&(DAILY[i].k!=='book'||(S.books||[]).length>1));const pick=[];
   while(pick.length<3&&pool.length){h=(h*1103515245+12345)>>>0;pick.push(pool.splice((h>>>8)%pool.length,1)[0])}
   S.daily={date:t,tasks:pick,c:{},claimed:false};save()}return S.daily}
-function dly(k,n,max){try{const d=daily();if(max!=null)d.c[k]=Math.max(d.c[k]||0,max);else d.c[k]=(d.c[k]||0)+(n||1);save()}catch(e){}if(max==null&&XPK[k])gainXP(XPK[k]*(n||1))}
+function dly(k,n,max){try{const d=daily();if(max!=null)d.c[k]=Math.max(d.c[k]||0,max);else d.c[k]=(d.c[k]||0)+(n||1);save()}catch(e){}if(max==null&&XPK[k])gainXP(XPK[k]*(n||1)*DXP[curDiff()])}
 const dailyDone=d=>d.tasks.every(i=>(d.c[DAILY[i].k]||0)>=DAILY[i].n);
 function dailyHtml(){const d=daily();return `<div class="daily" id="daily"><h3>📅 Today's Quests</h3>${d.tasks.map(i=>{const q=DAILY[i],v=Math.min(d.c[q.k]||0,q.n),ok=v>=q.n;return `<div class="dtask${ok?' done':''}"><span class="di">${q.i}</span><span class="dt">${esc(q.t)}<small>${esc(q.zh)}</small></span><span class="dp">${ok?'✅':v+' / '+q.n}</span></div>`}).join('')}
  ${d.claimed?'<small>Great job! Come back tomorrow for new quests.</small>':dailyDone(d)?'<button class="btn" id="dclaim">🎁 Open the daily chest! +60 coins</button>':'<small>Finish all three to open the daily chest!</small>'}</div>`}
