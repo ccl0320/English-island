@@ -203,6 +203,18 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pip);outline-of
 .dtask.done .dp{color:var(--good)}
 .daily .btn{margin-top:8px}
 .wbl{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.muted{color:var(--fog-deep)}.good{color:var(--good);font-weight:700}
+.wbtable td.wbn{color:var(--fog-deep);font-weight:800;font-family:var(--display);white-space:nowrap}
+.btn.mission{background:linear-gradient(135deg,#FF7A59,#F2A93B);color:#fff;box-shadow:0 4px 0 #C2502F}.btn.mission.done{background:linear-gradient(135deg,#3FB27F,#8AC74A);box-shadow:0 4px 0 #2B7F59}
+.mislist{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;margin:6px 0}
+.miscard{position:relative;background:var(--paper);border:0;border-radius:14px;padding:10px 6px 8px;box-shadow:0 3px 0 var(--fog-deep);font-family:var(--display);display:flex;flex-direction:column;align-items:center;gap:2px}
+.miscard i{position:absolute;top:4px;left:8px;font-style:normal;font-size:.8rem;color:var(--fog-deep);font-weight:800}.miscard span{font-size:2rem;line-height:1.1}.miscard span .ico3d{width:52px;height:52px}.miscard b{font-size:1.15rem}.miscard small{color:var(--fog-deep)}
+.mopt{display:block;margin:4px 0;font-weight:600}.mopt input{width:18px;height:18px;vertical-align:-3px;margin-right:6px}
+.btn.small{padding:6px 10px;font-size:.9rem}
+.msgrid h3{font-family:var(--display);margin:10px 0 4px}.msrow{display:flex;flex-wrap:wrap;gap:6px}
+.mspick{background:var(--paper);border:2px solid transparent;border-radius:12px;padding:6px 10px;font-family:var(--display);font-size:1rem;box-shadow:0 2px 0 var(--fog-deep);text-align:left}
+.mspick i{font-style:normal;color:var(--fog-deep);font-size:.8rem;font-weight:800}.mspick small{display:block;color:var(--fog-deep);font-size:.75rem}
+.mspick.on{border-color:#FF7A59;background:#FFE9DF}.mspick .ico3d{width:24px;height:24px;vertical-align:-6px}
 .wbc{background:var(--paper);border:0;border-radius:16px;padding:14px;box-shadow:0 3px 0 var(--fog-deep);text-align:left;font-family:var(--display)}
 .wbc b{display:block;font-size:1.15rem}.wbc small{display:block;color:var(--fog-deep);font-weight:600;margin:4px 0}
 .wbc .st{color:#E8C02A;font-size:1.2rem}
@@ -620,8 +632,10 @@ function mapGrid(){
  <div class="map">${UNITS.map((u,i)=>{const ready=u.subs.length>0,done=unitDone(u),next=ready&&!done&&u.subs[0]<=S.cleared;const st=!ready?'locked':done?'done':next?'next':'locked';
   const n=u.subs.filter(z=>z<S.cleared).length;
   return `<button class="zone ${st}" data-u="${i}" ${st==='locked'?'aria-disabled="true"':''} style="${done?`background:${u.color}`:''}"><span class="n">Island ${i+1} · ${esc(u.en)}</span><b>${esc(u.zh)}</b><small>${!ready?'Coming soon':done?'Got '+u.crystal:next?`Stage ${n} / 4`:'Foggy'}</small></button>`}).join('')}</div>
+ <div class="row">${missionBtn()}<button class="btn soft" id="wbb">📒 Word Book</button></div>
  ${S.dex.length?`<div class="panel"><h2 style="font-size:1.2rem;margin-bottom:8px">Rainbow Book: ${S.dex.length} / ${dexTotal()} words <small style="font-weight:600;color:var(--fog-deep)">Tap a card to hear it</small></h2><div class="dex">${dexHtml()}</div></div>`:''}`;
  app.querySelectorAll('.zone').forEach(b=>b.onclick=()=>{const u=UNITS[+b.dataset.u];if(u.subs.length&&u.subs[0]<=S.cleared)unitMap(+b.dataset.u)});
+ document.getElementById('misb').onclick=()=>mission(mapGrid);document.getElementById('wbb').onclick=()=>wordBook(mapGrid);
 }
 function unitGrid(ui){
  const u=UNITS[ui];
@@ -833,11 +847,11 @@ function map(){
  const open=UNITS.filter(u=>u.subs.length),allDone=open.every(unitDone);
  app.innerHTML=hud()+`<div class="story">${PIP}<div class="bubble" id="say3d">${allDone?`<span class="en">Great job, ${esc(S.name)}!</span>You cleared all open islands and collected ${S.dex.length} words! More islands are coming soon.`:`<span class="en">Where to, ${esc(S.name)}?</span>Tap the island with the orange arrow! Each island has 4 stages. Foggy islands are locked.`}</div></div>
  <div class="sea" id="sea"><div class="labels" id="labels"></div><div class="tip">Drag to turn · pinch to zoom</div>${zoomHtml()}</div>
- <div class="row">${S.cleared>0?`<button class="btn" id="camp">🏕️ Practice Camp${campCount()?` (${campCount()} to review)`:''}</button>`:''}<button class="btn soft" id="wbb">📒 Word Book</button><button class="btn soft" id="gamesb">🎮 Games</button><button class="btn soft" id="shopb">🛍️ Shop</button><button class="btn soft" id="houseb">🌈 Rainbow House</button><button class="btn soft" id="shelf">📚 Storybooks</button><button class="btn soft" id="vset">Voice settings${AZ&&AZ.key?' (Azure on)':''}</button><button class="btn soft" id="repb">📊 Report</button></div>
+ <div class="row">${missionBtn()}${S.cleared>0?`<button class="btn" id="camp">🏕️ Practice Camp${campCount()?` (${campCount()} to review)`:''}</button>`:''}<button class="btn soft" id="wbb">📒 Word Book</button><button class="btn soft" id="gamesb">🎮 Games</button><button class="btn soft" id="shopb">🛍️ Shop</button><button class="btn soft" id="houseb">🌈 Rainbow House</button><button class="btn soft" id="shelf">📚 Storybooks</button><button class="btn soft" id="vset">Voice settings${AZ&&AZ.key?' (Azure on)':''}</button><button class="btn soft" id="repb">📊 Report</button></div>
  ${S.name?dailyHtml():''}
  ${S.dex.length?`<div class="panel"><h2 style="font-size:1.2rem;margin-bottom:8px">Rainbow Book: ${S.dex.length} / ${dexTotal()} words <small style="font-weight:600;color:var(--fog-deep)">Tap a card to hear it</small></h2><div class="dex">${dexHtml()}</div></div>`:''}`;
  document.getElementById('vset').onclick=()=>voiceSettings(map);document.getElementById('shelf').onclick=()=>shelf(map);const cb=document.getElementById('camp');if(cb)cb.onclick=camp;
- document.getElementById('shopb').onclick=()=>shop(map);document.getElementById('gamesb').onclick=()=>games(map);document.getElementById('wbb').onclick=()=>wordBook(map);document.getElementById('repb').onclick=()=>report(map);document.getElementById('houseb').onclick=()=>house(map);
+ document.getElementById('shopb').onclick=()=>shop(map);document.getElementById('gamesb').onclick=()=>games(map);document.getElementById('wbb').onclick=()=>wordBook(map);document.getElementById('misb').onclick=()=>mission(map);document.getElementById('repb').onclick=()=>report(map);document.getElementById('houseb').onclick=()=>house(map);
  const dc=document.getElementById('dclaim');if(dc)dc.onclick=()=>{const d=daily();if(d.claimed||!dailyDone(d))return;d.claimed=true;addCoins(60);speak('Hooray! Sixty coins!');map()};
  mount(document.getElementById('sea'));rebuild();
 }
@@ -1829,6 +1843,7 @@ function report(back){const N=ZONES.length,done=Math.min(S.cleared,N),miss=S.mis
   <h3>最常排錯的句子</h3>${ts.length?`<table><tr><th>句子</th><th>關卡</th><th>錯誤次數</th><th>狀態</th></tr>${ts.map(mrow).join('')}</table>`:'<p class="muted">還沒有紀錄。</p>'}
   <h3>📒 單字本</h3><table><tr><th>單字表</th><th>星星</th><th>拼過的字</th></tr>${WB.map((L,i)=>`<tr><td>${L.t} · p.${L.page}</td><td>${'★'.repeat((S.wb||{})[i]||0)||'<span class="muted">未開始</span>'}</td><td>${(S.wbSeen||[]).filter(w=>L.items.some(x=>x[0]===w)).length} / ${L.items.length}</td></tr>`).join('')}</table>
   ${Object.keys(S.wbMiss||{}).length?`<table><tr><th>單字本最常錯</th><th>錯誤次數</th></tr>${Object.entries(S.wbMiss).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([w,n])=>`<tr><td>${esc(w.replace(' (sentence)',' 的句子'))}</td><td>${n}</td></tr>`).join('')}</table>`:''}
+  <h3>🎯 今日任務紀錄</h3>${Object.keys(S.mlog||{}).length?`<table><tr><th>日期</th><th>指定單字</th><th>結果</th><th>拼錯的字</th></tr>${Object.entries(S.mlog).sort((a,b)=>new Date(b[0])-new Date(a[0])).slice(0,14).map(([dt,h])=>{const mw=Object.entries(h.miss||{}).sort((a,b)=>b[1]-a[1]);return `<tr><td>${esc(dt)}</td><td>#${esc(numsTxt(h.nums||[]))}</td><td>${h.done?'✅ '+'★'.repeat(h.best||0):'未完成'}（${h.tries||0} 次）</td><td>${mw.length?mw.map(([w,c])=>`#${wbNum(w)} ${esc(w)}×${c}`).join('、'):'—'}</td></tr>`}).join('')}</table>`:'<p class="muted">還沒有指定任務。從地圖上的「🎯 Today\'s Mission」設定。</p>'}
   <h3>已過關卡中還沒拼過的單字</h3><p>${unseen.length?unseen.map(esc).join('、'):'<span class="muted">全部都拼過了！</span>'}</p>
   <p class="muted">錯誤次數從這個版本開始記錄，每按錯一次算一次。</p>
   <div class="row noprint"><button class="btn" id="rprint">列印</button><button class="btn soft" id="rback">Back to map</button></div></div>`;
@@ -1870,11 +1885,19 @@ const WB=[
   ['jet','🛩️','噴射機','I have a jet.',1],['bed','🛏️','床','I go to bed at ten.',1],['hen','🐔','母雞','I see a white hen.',1],['dance','💃','跳舞','Tim likes to dance.',0],
   ['read','📖','閱讀','Tim likes to read books.',0],['smell','👃','聞到','It smells delicious.',0],['taste','👅','品嚐','It tastes sweet.',0],['fries','🍟','薯條',"I'd like some fries for lunch.",0],
   ['rice','🍚','米飯',"I'd like some rice for dinner.",0],['cookie','🍪','餅乾','Do you have cookies for lunch? Yes, I do.',0],['yogurt','🥣','優格',"Do you have yogurt for breakfast? No, I don't.",0],
-  ['carrot','🥕','胡蘿蔔',"Do you like carrots? No, I don't.",0]]}];
+  ['carrot','🥕','胡蘿蔔',"Do you like carrots? No, I don't.",0]]},
+ {t:'List 4',sub:'Phonics World 2 U4-6 · Reading Sketch 2 U5-6',page:13,items:[
+  ['bean','🫘','豆子','Do you like beans? Yes, I do.',1],['zip','💨','快速移動','I can zip.',1],['ink','🖋️','墨水','The kid can use ink.',1],['kid','🧒','小孩','The kid can use ink.',1],
+  ['lip','👄','嘴唇','I like to sip with my lips.',1],['bib','👶','圍兜','This kid needs a bib!',1],['win','🏆','獲勝','I can win!',1],['dig','⛏️','挖掘','My dog likes to dig holes.',1],
+  ['hit','🏏','打擊','I can hit.',1],['six','6️⃣','六',"I don't want six pits.",1],['land','⛰️','陸地','Where do land animals live?',1],['river','🏞️','河流','Beavers live in the river.',0],
+  ['pass','🤲','傳遞','Would you pass me the science book, please?',1],['cry','😢','哭泣','"Found it, doctor." I cry.',1],['fox','🦊','狐狸','The fox has a hot pot.',1]]}];
+// textbook number (#) of every Word Book word = its place in the list above, counting from 1 (List 4 starts at #46)
+const WBN=WB.flatMap(L=>L.items);
+const wbNum=w=>WBN.findIndex(x=>x[0]===w)+1;
 const WBZ={zh:'Word Book'};
-SPR[99]={m:'m14-balloon'};
+SPR[99]={m:'m14-balloon'};SPR[98]={m:'m13-cushion'};
 // every word learned in the Word Book becomes a magic spell for battles: attack, heal or freeze time
-const FOOD=['jam','cookie','rice','fries','yogurt','carrot','flower','garden'],ICE=['web','wall','circle','square','mat','ten','bed','scissors'];
+const FOOD=['bean','jam','cookie','rice','fries','yogurt','carrot','flower','garden'],ICE=['ink','web','wall','circle','square','mat','ten','bed','scissors'];
 const spellType=w=>FOOD.includes(w)?'heal':ICE.includes(w)?'ice':'atk';
 const SPELLFX={atk:['⚔️','Attack! One hit on the monster'],heal:['💚','Heal! +2 hearts'],ice:['❄️','Freeze! The clock stops']};
 const wbItem=w=>{for(const L of WB){const x=L.items.find(y=>y[0]===w);if(x)return x}return null};
@@ -1913,36 +1936,40 @@ function wordBook(back){S.wb=S.wb||{};
  document.getElementById('wblist').onclick=()=>wbList(()=>wordBook(back));document.getElementById('wbback').onclick=back||map}
 function wbList(back){
  app.innerHTML=hud(WBZ)+`<div class="panel"><h2 style="font-size:1.5rem">📒 All words</h2><p class="muted">Tap a word or a sentence to hear it.</p>
-  ${WB.map(L=>`<h3 style="font-family:var(--display);margin:12px 0 4px">${L.t} · p.${L.page}</h3><table class="wbtable">${L.items.map(x=>`<tr><td>${x[1]}</td><td><button class="sfxb w" data-say="${esc(x[0])}">${esc(x[0])}</button><br><small>${esc(x[2])}</small></td><td><button class="sfxb" style="text-align:left;font-size:1rem" data-say="${esc(x[3])}">${esc(x[3])}</button></td></tr>`).join('')}</table>`).join('')}
+  ${WB.map(L=>`<h3 style="font-family:var(--display);margin:12px 0 4px">${L.t} · p.${L.page}</h3><table class="wbtable">${L.items.map(x=>`<tr><td class="wbn">#${wbNum(x[0])}</td><td>${x[1]}</td><td><button class="sfxb w" data-say="${esc(x[0])}">${esc(x[0])}</button><br><small>${esc(x[2])}</small></td><td><button class="sfxb" style="text-align:left;font-size:1rem" data-say="${esc(x[3])}">${esc(x[3])}</button></td></tr>`).join('')}</table>`).join('')}
   <div class="row"><button class="btn soft" id="wlback">Back</button></div></div>`;
  bindSay();document.getElementById('wlback').onclick=back}
-function wbPlay(li,back){const L=WB[li],seen=S.wbSeen=S.wbSeen||[];resetSkills();
- const pool=shuffle(L.items),list=[...pool.filter(x=>!seen.includes(x[0])),...pool.filter(x=>seen.includes(x[0]))].slice(0,7);
- const st={hearts:5};let k=0,miss=0,QN0=MISSN;
- const missW=w=>{miss++;S.wbMiss=S.wbMiss||{};S.wbMiss[w]=(S.wbMiss[w]||0)+1;COMBO=0;updCombo();save()};
+function wbPlay(li,back,o){const L=o?{t:o.t}:WB[li],seen=S.wbSeen=S.wbSeen||[],withSent=!o||o.sent,retried=new Set(),missOf={};resetSkills();
+ const pool=o?null:shuffle(L.items),list=o?shuffle(o.list):[...pool.filter(x=>!seen.includes(x[0])),...pool.filter(x=>seen.includes(x[0]))].slice(0,7);
+ const st={hearts:5};let k=0,miss=0,QN0=MISSN,bad=false;
+ const missW=w=>{miss++;bad=true;const b=w.replace(' (sentence)','');missOf[b]=(missOf[b]||0)+1;S.wbMiss=S.wbMiss||{};S.wbMiss[w]=(S.wbMiss[w]||0)+1;COMBO=0;updCombo();save()};
  const hurt=(hint,msg)=>{FX.foe();st.hearts=Math.max(0,st.hearts-1);if(!st.hearts){st.hearts=5;msg+=' Pip filled your hearts!'}updHearts(st);hint.textContent=msg};
- const frame=(x,step,body,hintTxt)=>{app.innerHTML=hud(WBZ)+`<div class="panel arena"><div class="hud" style="width:100%"><span>📒 ${L.t} · Word ${k+1} / ${list.length} · ${step}</span><span class="hearts">${heartsTxt(st)}</span></div>
-   ${stageHtml(99,{pic:x[1],gloss:x[2],size:2,foeHp:(list.length-k)/list.length,heroHp:st.hearts/5})}${body}${skillsHtml()}<div class="hint" id="hint">${hintTxt}</div></div>`;return document.getElementById('hint')};
- const spellStep=()=>{const x=list[k],word=x[0],letters=[...word],need=blanksFor(letters,!!x[4]);
+ const frame=(x,step,body,hintTxt)=>{app.innerHTML=hud(o?{zh:o.t}:WBZ)+`<div class="panel arena"><div class="hud" style="width:100%"><span>${o?'🎯':'📒'} ${L.t} · Word ${k+1} / ${list.length}${o?` · #${wbNum(x[0])}`:''} · ${step}</span><span class="hearts">${heartsTxt(st)}</span></div>
+   ${stageHtml(o?98:99,{pic:x[1],gloss:x[2],size:2,foeHp:(list.length-k)/list.length,heroHp:st.hearts/5})}${body}${skillsHtml()}<div class="hint" id="hint">${hintTxt}</div></div>`;return document.getElementById('hint')};
+ const spellStep=()=>{const x=list[k],word=x[0],letters=[...word],need=blanksFor(letters,!!x[4]||!!(o&&o.full));bad=false;
   let pool2=need.map(i=>letters[i]);const ex=shuffle([...CVC_DISTRACT].filter(c=>!pool2.includes(c)));while(pool2.length<Math.max(6,need.length+2))pool2.push(ex.pop());pool2=shuffle(pool2);let pos=0,wrong=0;
   const hint=frame(x,'Spell',`<div class="slots ${letters.length>6?'long':''}" id="slots">${letters.map((c,i)=>need.includes(i)?`<div class="slot" data-i="${i}"></div>`:`<div class="slot fixed">${c===' '?'&nbsp;':esc(c)}</div>`).join('')}</div>
    <div class="tiles" id="tiles">${pool2.map((c,i)=>`<button class="tile" data-c="${c}">${c}</button>`).join('')}</div><button class="say" id="say">Listen</button>`,'Listen and spell the word!');
   app.dataset.wb=word;speak(word);document.getElementById('say').onclick=()=>speak(word);
   const pick=t=>{if(pos>=need.length)return;const want=letters[need[pos]];
    if(t.dataset.c===want){speak(want,1);t.classList.add('used');const sl=app.querySelector(`.slot[data-i="${need[pos]}"]`);sl.textContent=want;sl.classList.add('filled');pos++;wrong=0;
-    if(pos>=need.length){if(!seen.includes(word)){seen.push(word);save()}speak(word);hint.innerHTML='<span style="color:var(--good)">Great! Now build the sentence!</span>';sfx('pop');setTimeout(sentStep,900)}}
+    if(pos>=need.length){if(!seen.includes(word)){seen.push(word);save()}speak(word);if(withSent){hint.innerHTML='<span style="color:var(--good)">Great! Now build the sentence!</span>';sfx('pop');setTimeout(sentStep,900)}else setTimeout(()=>hitWord(x,hint),500)}}
    else{wrong++;t.classList.remove('wrong');void t.offsetWidth;t.classList.add('wrong');missW(word);hurt(hint,'Oops! Pip says: '+want.toUpperCase());speak(want,1);
     if(wrong>=2){const g=[...app.querySelectorAll('.tile:not(.used)')].find(y=>y.dataset.c===want);if(g)g.classList.add('glow')}}};
   app.querySelectorAll('#tiles .tile').forEach(t=>t.onclick=()=>pick(t));
   bindSkills(()=>()=>{if(pos>=need.length)return false;const t=[...app.querySelectorAll('#tiles .tile:not(.used)')].find(y=>y.dataset.c===letters[need[pos]]);if(!t)return false;t.click();return true},st)};
+ // a word is finished: learn its magic, hit the monster. In a mission a word with a mistake comes back once at the end.
+ const hitWord=(x,hint)=>{S.spells=S.spells||[];const nw=!S.spells.includes(x[0]);if(nw){S.spells.push(x[0]);save()}
+  const again=o&&o.retry&&bad&&!retried.has(x[0]);if(again){retried.add(x[0]);list.push(x)}
+  setTimeout(()=>comboHit(true),250);FX.hero();k++;const left=list.length-k;const fh=document.getElementById('foehp');if(fh)fh.style.width=(left/list.length*100)+'%';
+  hint.innerHTML=`<span style="color:var(--good)">Hit! ${nw?`✨ New magic word: ${esc(x[0])}! `:''}${again?`"${esc(x[0])}" will come back once more. `:''}${left?`The ${o?'Mission':'Word'} Monster has ${left} HP left.`:`You beat the ${o?'Mission':'Word'} Monster!`}</span>`;setTimeout(left?spellStep:(o?()=>o.onDone({miss,missOf,n:k,list}):done),1800)};
  const sentStep=()=>{const x=list[k],sent=x[3],parts=tokens(sent),deck=shuffle(parts.map((p,i)=>({p,i})));let pos=0;
   const hint=frame(x,'Sentence',`<div class="built sent" id="built">${parts.map(p=>`<span class="slot${isMark(p)?' pc':''}"></span>`).join('')}</div>
    <div class="row" id="deck">${deck.map((d,i)=>`<button class="card${isMark(d.p)?' pc':''}" data-k="${i}">${esc(d.p)}</button>`).join('')}</div><button class="say" id="say">Listen</button>`,'Listen and tap the cards in order. The end mark ( . ? ! ) is a card too!');
   app.dataset.ans=parts.join('|');speak(sent);document.getElementById('say').onclick=()=>speak(sent);
   const pick=b=>{const d=deck[+b.dataset.k];if(b.classList.contains('used'))return;
    if(d.p===parts[pos]){b.classList.add('used');b.style.visibility='hidden';const sl=app.querySelectorAll('#built .slot')[pos];sl.textContent=d.p;sl.classList.add('filled');pos++;if(!isMark(d.p))speak(d.p.replace(/,/g,''),1);
-    if(pos>=parts.length){speak(sent);S.spells=S.spells||[];const nw=!S.spells.includes(x[0]);if(nw){S.spells.push(x[0]);save()}setTimeout(()=>comboHit(true),250);FX.hero();k++;const left=list.length-k;const fh=document.getElementById('foehp');if(fh)fh.style.width=(left/list.length*100)+'%';
-     hint.innerHTML=`<span style="color:var(--good)">Hit! ${nw?`✨ New magic word: ${esc(x[0])}! `:''}${left?`The Word Monster has ${left} HP left.`:'You beat the Word Monster!'}</span>`;setTimeout(left?spellStep:done,1800)}}
+    if(pos>=parts.length){speak(sent);hitWord(x,hint)}}
    else{b.classList.remove('wrong');void b.offsetWidth;b.classList.add('wrong');missW(x[0]+' (sentence)');hurt(hint,isMark(d.p)?'Not yet! The end mark comes last.':'Oops! Listen again and find the next card.');
     const g=[...app.querySelectorAll('#deck .card')].find(y=>!y.classList.contains('used')&&deck[+y.dataset.k].p===parts[pos]);if(g){g.classList.add('tile','glow');setTimeout(()=>g.classList.remove('tile','glow'),2000)}}};
   app.querySelectorAll('#deck .card').forEach(b=>b.onclick=()=>pick(b));
@@ -1955,6 +1982,89 @@ function wbPlay(li,back){const L=WB[li],seen=S.wbSeen=S.wbSeen||[];resetSkills()
    <div class="row"><button class="btn" id="wagain">Play again</button><button class="btn soft" id="wb2">Back</button></div></div>`;
   speak('You beat the Word Monster!');document.getElementById('wagain').onclick=()=>wbPlay(li,back);document.getElementById('wb2').onclick=back};
  spellStep()}
+
+// ---------- Today's Mission: a parent or teacher picks textbook word numbers, the child spells them to beat the Mission Monster ----------
+// S.mission = {nums:[46,47,...], sent:bool (also build the example sentence), full:bool (no free letters), set:'yyyy-m-d'}
+// S.mlog = {'yyyy-m-d': {nums, tries, done, best (stars), miss:{word:n}}}  (last 30 days)
+function parseNums(t){const out=[];String(t||'').replace(/[，、；;\s]+/g,',').split(',').forEach(p=>{
+  const m=p.trim().match(/^#?(\d+)\s*(?:[-–—~～到至]\s*#?(\d+))?$/);if(!m)return;let a=+m[1],b=m[2]?+m[2]:a;if(a>b)[a,b]=[b,a];
+  for(let i=Math.max(1,a);i<=Math.min(b,WBN.length);i++)if(!out.includes(i))out.push(i)});return out.sort((a,b)=>a-b)}
+function numsTxt(ns){const a=[...ns].sort((x,y)=>x-y),r=[];for(let i=0;i<a.length;i++){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?a[i]+'-'+a[j]:''+a[i]);i=j}return r.join(', ')}
+const misItems=()=>((S.mission&&S.mission.nums)||[]).map(n=>WBN[n-1]).filter(Boolean);
+const mlogToday=()=>{S.mlog=S.mlog||{};const t=today(),m=S.mission;let d=S.mlog[t];
+ if(!d||(m&&numsTxt(d.nums)!==numsTxt(m.nums)))d=S.mlog[t]={nums:m?m.nums.slice():[],tries:d?d.tries:0,done:false,best:0,miss:d?d.miss:{}};return d};
+function missionBtn(){const n=misItems().length,d=S.mlog&&S.mlog[today()],ok=n&&d&&d.done&&numsTxt(d.nums)===numsTxt(S.mission.nums);
+ return `<button class="btn mission${ok?' done':''}" id="misb">🎯 Today's Mission${n?` · ${n} words${ok?' ✅':''}`:''}</button>`}
+// a teacher can share a link like index.html?mission=46-51 (&sent=1 &full=1)
+(function missionFromLink(){try{const q=new URLSearchParams(location.search),v=q.get('mission');if(!v)return;const nums=parseNums(v);if(!nums.length)return;
+ S.mission={nums,sent:q.get('sent')==='1',full:q.get('full')==='1',set:today(),by:'link'};save();
+ history.replaceState(null,'',location.pathname+location.hash)}catch(e){}})();
+
+function mission(back){back=back||map;const items=misItems(),m=S.mission,d=S.mlog&&S.mlog[today()],ok=d&&d.done&&m&&numsTxt(d.nums)===numsTxt(m.nums);
+ app.innerHTML=hud({zh:"Today's Mission"})+`<div class="panel"><h2 style="font-size:1.5rem">🎯 Today's Mission</h2>
+  ${items.length?`<p style="margin:6px 0 10px">Spell every word to beat the Mission Monster! ${m.sent?'Then build the sentence.':''}<br><small class="muted">今日任務：家長／老師指定的單字 #${esc(numsTxt(m.nums))}${m.sent?'（含例句）':''}${m.full?'（全部字母自己拼）':''}</small></p>
+   <div class="mislist">${items.map(x=>`<button class="miscard" data-say="${esc(x[0])}"><i>#${wbNum(x[0])}</i><span>${x[1]}</span><b>${esc(x[0])}</b><small>${esc(x[2])}</small></button>`).join('')}</div>
+   ${ok?`<p class="good" style="margin:8px 0">✅ Mission clear today! ${'★'.repeat(d.best)}${'☆'.repeat(3-d.best)} Play again to get more stars.</p>`:''}
+   <div class="row"><button class="btn" id="misgo">⚔️ ${ok?'Play again':'Start the mission!'}</button><button class="btn soft" id="misset">👪 家長／老師設定</button><button class="btn soft" id="misback">Back</button></div>`
+  :`<p style="margin:8px 0 12px">No mission yet! Ask your mom, dad or teacher to choose today's words.<br><small class="muted">還沒有指定今日任務。請家長或老師按「設定」，輸入課本單字編號（例如 46-51）。</small></p>
+   <div class="row"><button class="btn" id="misset">👪 家長／老師設定</button><button class="btn soft" id="misback">Back</button></div>`}</div>`;
+ bindSay();document.getElementById('misback').onclick=back;
+ document.getElementById('misset').onclick=()=>grownUp(()=>missionSetup(()=>mission(back)),()=>mission(back));
+ const g=document.getElementById('misgo');if(g)g.onclick=()=>missionPlay(back)}
+
+// a tiny check so the child does not change their own mission
+function grownUp(ok,back){const a=6+(Math.random()*4|0),b=6+(Math.random()*4|0);
+ app.innerHTML=hud({zh:"Today's Mission"})+`<div class="panel" style="max-width:420px;margin:0 auto"><h2 style="font-size:1.3rem">👪 家長／老師確認</h2>
+  <p style="margin:8px 0">請回答：<b style="font-size:1.4rem">${a} × ${b} = ?</b></p>
+  <input id="gua" inputmode="numeric" autocomplete="off" style="font-size:1.4rem;width:120px;padding:6px 10px;border-radius:10px;border:2px solid var(--fog-deep)">
+  <div class="row" style="margin-top:12px"><button class="btn" id="guok">確定</button><button class="btn soft" id="guback">返回</button></div><p class="muted" id="gumsg"></p></div>`;
+ const inp=document.getElementById('gua');inp.focus();
+ const go=()=>{if(+inp.value===a*b)ok();else{document.getElementById('gumsg').textContent='答案不對，再試一次。';inp.value='';inp.focus()}};
+ document.getElementById('guok').onclick=go;inp.onkeydown=e=>{if(e.key==='Enter')go()};document.getElementById('guback').onclick=back}
+
+function missionSetup(back){const m=S.mission||{nums:[],sent:false,full:false};let sel=new Set(m.nums);
+ const histo=Object.entries(S.mlog||{}).sort((a,b)=>new Date(b[0])-new Date(a[0])).slice(0,7);
+ app.innerHTML=hud({zh:"Today's Mission"})+`<div class="panel"><h2 style="font-size:1.4rem">👪 設定今日任務</h2>
+  <p class="muted" style="margin:4px 0 8px">輸入課本單字表的編號（#），可用範圍與逗號，例如 <b>46-51</b> 或 <b>46, 48, 52-55</b>；也可以直接點下面的單字。</p>
+  <input id="msnums" value="${esc(numsTxt(sel))}" placeholder="例如 46-51" style="font-size:1.2rem;width:100%;max-width:420px;padding:8px 12px;border-radius:12px;border:2px solid var(--fog-deep)">
+  <div class="row" style="justify-content:flex-start;margin:8px 0">${WB.map((L,i)=>{const a=wbNum(L.items[0][0]),b=a+L.items.length-1;return `<button class="btn soft small" data-rng="${a}-${b}">${L.t} (#${a}-${b})</button>`}).join('')}<button class="btn soft small" id="msclear">清除</button></div>
+  <label class="mopt"><input type="checkbox" id="mssent" ${m.sent?'checked':''}> 拼完單字後，再排課本例句</label>
+  <label class="mopt"><input type="checkbox" id="msfull" ${m.full?'checked':''}> 全部字母都要自己拼（不給提示字母，較難）</label>
+  <p id="mscount" style="margin:8px 0;font-weight:700"></p>
+  <div class="msgrid">${WB.map(L=>`<h3>${L.t} · p.${L.page}</h3><div class="msrow">${L.items.map(x=>{const n=wbNum(x[0]);return `<button class="mspick" data-n="${n}"><i>#${n}</i> ${x[1]} ${esc(x[0])}<small>${esc(x[2])}</small></button>`}).join('')}</div>`).join('')}</div>
+  <div class="row" style="margin-top:12px"><button class="btn" id="mssave">💾 儲存今日任務</button><button class="btn soft" id="mslink">🔗 複製分享連結</button><button class="btn soft" id="msback">返回</button></div>
+  <p class="muted" id="msmsg"></p>
+  ${histo.length?`<h3 style="margin-top:14px">最近的任務紀錄</h3><table class="wbtable">${histo.map(([dt,h])=>{const mw=Object.entries(h.miss||{}).sort((a,b)=>b[1]-a[1]);return `<tr><td>${esc(dt)}</td><td>#${esc(numsTxt(h.nums||[]))}<br><small>${h.done?'✅ 完成 '+'★'.repeat(h.best||0):'未完成'} · 玩了 ${h.tries||0} 次</small></td><td><small>${mw.length?'拼錯：'+mw.map(([w,c])=>`#${wbNum(w)} ${esc(w)}×${c}`).join('、'):'全部答對 👍'}</small></td></tr>`}).join('')}</table>`:''}</div>`;
+ const inp=document.getElementById('msnums'),cnt=document.getElementById('mscount');
+ const draw=(fromInput)=>{if(!fromInput)inp.value=numsTxt(sel);app.querySelectorAll('.mspick').forEach(b=>b.classList.toggle('on',sel.has(+b.dataset.n)));
+  const its=[...sel].sort((a,b)=>a-b).map(n=>WBN[n-1]);cnt.textContent=sel.size?`已選 ${sel.size} 個單字：${its.map(x=>x[0]).join(', ')}`:'還沒有選單字'};
+ inp.oninput=()=>{sel=new Set(parseNums(inp.value));draw(true)};
+ app.querySelectorAll('.mspick').forEach(b=>b.onclick=()=>{const n=+b.dataset.n;sel.has(n)?sel.delete(n):sel.add(n);draw()});
+ app.querySelectorAll('[data-rng]').forEach(b=>b.onclick=()=>{parseNums(b.dataset.rng).forEach(n=>sel.add(n));draw()});
+ document.getElementById('msclear').onclick=()=>{sel.clear();draw()};
+ const cur=()=>({nums:[...sel].sort((a,b)=>a-b),sent:document.getElementById('mssent').checked,full:document.getElementById('msfull').checked});
+ document.getElementById('mssave').onclick=()=>{const c=cur();if(!c.nums.length){document.getElementById('msmsg').textContent='請至少選 1 個單字。';return}
+  S.mission={...c,set:today()};save();sfx('coin');back()};
+ document.getElementById('mslink').onclick=()=>{const c=cur(),msg=document.getElementById('msmsg');if(!c.nums.length){msg.textContent='請至少選 1 個單字。';return}
+  const url=location.origin+location.pathname+'?mission='+encodeURIComponent(numsTxt(c.nums).replace(/ /g,''))+(c.sent?'&sent=1':'')+(c.full?'&full=1':'');
+  const show=()=>{msg.innerHTML='分享連結（孩子打開後就會套用這個任務）：<br><code style="word-break:break-all">'+esc(url)+'</code>'};
+  try{navigator.clipboard.writeText(url).then(()=>{show();msg.insertAdjacentHTML('afterbegin','✅ 已複製！ ')},show)}catch(e){show()}};
+ document.getElementById('msback').onclick=back;draw()}
+
+function missionPlay(back){const items=misItems();if(!items.length)return mission(back);const m=S.mission,d=mlogToday();d.tries=(d.tries||0)+1;save();
+ wbPlay(-1,()=>mission(back),{t:"Today's Mission",list:items,sent:!!m.sent,full:!!m.full,retry:true,onDone:r=>{
+  const stars=r.miss<=1?3:r.miss<=4?2:1,first=!d.done;d.done=true;d.best=Math.max(d.best||0,stars);
+  for(const w in r.missOf)d.miss[w]=(d.miss[w]||0)+r.missOf[w];
+  const keys=Object.keys(S.mlog).sort((a,b)=>new Date(b)-new Date(a));keys.slice(30).forEach(k=>delete S.mlog[k]);
+  save();sfx('win');addCoins(first?50:20);dly('words',items.length);if(m.sent)dly('sents',items.length);
+  const mw=Object.keys(r.missOf);
+  app.innerHTML=hud({zh:"Today's Mission"})+`<div class="panel arena" style="text-align:center"><h2 style="font-size:1.8rem">🎯 Mission clear!</h2>
+   <div class="result"><div class="stars" aria-label="${stars} stars">${[1,2,3].map(i=>`<i class="${i<=stars?'on':''}" style="animation-delay:${i*.3}s">★</i>`).join('')}</div>
+   <div class="stats"><span>✏️ ${items.length} words</span>${m.sent?`<span>📝 ${items.length} sentences</span>`:''}<span>🪙 +${first?50:20} coins</span></div></div>
+   <p style="margin:10px 0">${items.map(x=>`${x[1]} ${esc(x[0])}`).join(' · ')}</p>
+   ${mw.length?`<p class="muted">Practice these again: ${mw.map(w=>`<b>${esc(w)}</b>`).join(', ')}<br><small>這次拼錯過的字（已記錄給家長／老師）</small></p>`:'<p class="good">Perfect! No mistakes! 全部答對！</p>'}
+   <div class="row"><button class="btn" id="magain">Play again</button><button class="btn soft" id="mback">Back</button></div></div>`;
+  speak('Mission clear! You beat the Mission Monster!');document.getElementById('magain').onclick=()=>missionPlay(back);document.getElementById('mback').onclick=()=>mission(back)}})}
 
 // Mumble's diary: one page is found after each boss
 const DIARY=[

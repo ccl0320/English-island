@@ -3,13 +3,15 @@ name: Build Android APK
 on:
   push:
     branches: [main]
+  pull_request:
+    paths: ['android/**', '.github/workflows/android-apk.yml']
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: android-apk
+  group: android-apk-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
   cancel-in-progress: true
 
 jobs:
@@ -48,6 +50,7 @@ jobs:
           path: English-Island.apk
 
       - name: Publish the APK as a download
+        if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: apk-latest
@@ -57,4 +60,20 @@ jobs:
             This APK is rebuilt automatically every time the game is updated.
           files: English-Island.apk
           make_latest: true
+          overwrite_files: true
+
+      # Published after the APK, so an installed app never sees a version number
+      # whose APK is not uploaded yet. The app reads this file on start to offer the update.
+      - name: Publish version.json for the in-app update check
+        if: github.event_name != 'pull_request'
+        run: |
+          printf '{"versionCode":%s,"versionName":"1.0.%s","apk":"https://github.com/%s/releases/download/apk-latest/English-Island.apk"}\n' \
+            "$GITHUB_RUN_NUMBER" "$GITHUB_RUN_NUMBER" "$GITHUB_REPOSITORY" > version.json
+          cat version.json
+
+      - uses: softprops/action-gh-release@v2
+        if: github.event_name != 'pull_request'
+        with:
+          tag_name: apk-latest
+          files: version.json
           overwrite_files: true
