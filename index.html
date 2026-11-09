@@ -136,6 +136,35 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--pip);outline-of
 .ph{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 14px;border-radius:14px;border:3px solid transparent;background:var(--paper);font:inherit;font-weight:700;cursor:pointer;color:var(--ink)}
 .ph img{height:76px}
 .ph.on{border-color:var(--good)}
+.lvb{display:inline-flex;align-items:center;gap:6px;border:2px solid #7c5cd6;background:#f3eeff;border-radius:999px;padding:2px 10px 2px 4px;font:800 .9rem var(--display,inherit);color:#4b2fa8;cursor:pointer;margin-left:auto}
+.lvb .lvn{background:#7c5cd6;color:#fff;border-radius:999px;padding:1px 8px}
+.xpbar{display:inline-block;width:64px;height:9px;border-radius:9px;background:#ddd3f6;overflow:hidden;vertical-align:middle}
+.xpbar.big{display:block;width:100%;height:16px;margin:8px 0}
+.xpfill{display:block;height:100%;background:linear-gradient(90deg,#9b7bff,#f2a93b);border-radius:9px;transition:width .6s}
+.lvb .xpt{font-size:.7rem;color:#6b55b5}
+.lvb.gain{animation:lvgain .6s}
+@keyframes lvgain{40%{transform:scale(1.15)}}
+.lvb+.coins{margin-left:0}
+@media (max-width:560px){.lvb .xpt{display:none}.lvb .xpbar{width:44px}.lvb{padding-right:6px}}
+.xppop{position:fixed;z-index:60;transform:translateX(-50%);font:900 1rem var(--display,inherit);color:#7c5cd6;text-shadow:0 1px 0 #fff,0 0 6px #fff;pointer-events:none;animation:xpup 1.3s ease-out forwards}
+@keyframes xpup{from{opacity:0;margin-top:8px}20%{opacity:1}to{opacity:0;margin-top:-30px}}
+.lvup{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(31,42,68,.45);padding:16px;animation:lvin .3s}
+.lvup.out{opacity:0;transition:opacity .3s}
+@keyframes lvin{from{opacity:0}}
+.lvcard{background:#fffaf0;border:4px solid #f2a93b;border-radius:24px;padding:18px 22px;text-align:center;max-width:360px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.25);animation:lvpop .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes lvpop{from{transform:scale(.4)}}
+.lvcard h2{font:900 1.9rem var(--display,inherit);color:#7c5cd6;margin:0}
+.lvburst{font-size:3rem;animation:lvspin 1.2s ease-out}
+@keyframes lvspin{from{transform:rotate(-180deg) scale(.2)}}
+.lvbig{font:900 2.6rem var(--display,inherit);color:#f08c2e;margin:2px 0}
+.lvname{font-weight:800;color:#4b2fa8;margin-bottom:8px}
+.lvperk{background:#f3eeff;border-radius:12px;padding:6px 10px;margin:6px 0;font-weight:700}
+.lvcard .btn{margin-top:10px}
+.lvlist{max-height:90vh;overflow:auto;text-align:left}
+.lvlist h2{font-size:1.4rem;text-align:center}
+.lvrow{display:flex;gap:10px;align-items:center;padding:6px 8px;border-radius:10px;opacity:.55}
+.lvrow.on{opacity:1;background:#f3eeff}
+.lvrow b{min-width:48px;color:#7c5cd6}.lvrow span{flex:1}
 .coins{display:inline-flex;align-items:center;gap:5px;font:800 1rem var(--display,inherit);color:#9a6b00;margin-left:auto;margin-right:10px}
 .coin{display:inline-block;width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFE58A,#F2C230 55%,#C99212);box-shadow:inset 0 0 0 2px #E0A91E}
 .coinpop{position:absolute;transform:translateX(-50%);display:flex;align-items:center;gap:4px;font:800 1.5rem var(--display,inherit);color:#9a6b00;background:#fff8dc;border-radius:999px;padding:2px 12px;box-shadow:0 3px 0 rgba(0,0,0,.12);animation:coinup 1.6s forwards}
@@ -488,6 +517,35 @@ const CVC_DISTRACT='abcdefghijklmnoprstuvwy';
 let S={name:'',cleared:0,dex:[]};
 try{const s=JSON.parse(localStorage.getItem('rq-save')||'null');if(s&&typeof s.cleared==='number')S=s}catch(e){}
 if(!S.diary)S.diary=[...Array(Math.min(S.cleared||0,8)).keys()];
+// ---- XP and levels: every word, sentence, chest and boss gives XP; levels give titles and battle perks ----
+const LVP=[[2,'pip','+1 Pip hint','🦉'],[3,'heart','+1 heart','❤️'],[4,'time','+2 seconds on the clock','⏱️'],[5,'mp','+1 magic','✨'],[6,'heart','+1 heart','❤️'],[8,'time','+2 seconds on the clock','⏱️'],[10,'pip','+1 Pip hint','🦉'],[12,'heart','+1 heart','❤️'],[15,'mp','+1 magic','✨']];
+const LVT=[[1,'Rookie'],[3,'Word Scout'],[5,'Spell Knight'],[8,'Word Wizard'],[12,'Rainbow Hero'],[16,'Island Legend'],[20,'Grand Master']];
+const XPK={words:5,sents:8,chest:15,camp:4,boss:60,book:10};
+const xpNeed=L=>60+30*(L-1);
+function lvOf(x){let L=1;x=Math.max(0,x|0);while(L<99&&x>=xpNeed(L)){x-=xpNeed(L);L++}return{L,into:x,need:xpNeed(L)}}
+const LV=()=>lvOf(S.xp).L;
+const lvTitle=L=>LVT.filter(t=>L>=t[0]).pop()[1];
+const perk=k=>LVP.filter(p=>p[1]===k&&LV()>=p[0]).length;
+const MAXH=()=>5+perk('heart');
+// players who started before levels existed get XP for what they already did
+function ensureXp(){if(typeof S.xp!=='number')S.xp=(S.cleared||0)*150+(S.dex||[]).length*5+Object.values(S.stars||{}).reduce((a,b)=>a+b,0)*10}
+ensureXp();
+function lvHtml(){const v=lvOf(S.xp);return `<button class="lvb" onclick="levels()" aria-label="level ${v.L}, ${v.into} of ${v.need} XP"><b class="lvn">Lv ${v.L}</b><span class="xpbar"><i class="xpfill" style="width:${v.into/v.need*100}%"></i></span><small class="xpt">${v.into}/${v.need}</small></button>`}
+function updLvUi(){const v=lvOf(S.xp);document.querySelectorAll('.lvb').forEach(b=>{b.querySelector('.lvn').textContent='Lv '+v.L;b.querySelector('.xpfill').style.width=(v.into/v.need*100)+'%';b.querySelector('.xpt').textContent=v.into+'/'+v.need;b.classList.remove('gain');void b.offsetWidth;b.classList.add('gain')})}
+function xpPop(n){const d=document.createElement('div');d.className='xppop';d.textContent='+'+n+' XP';const b=document.querySelector('.lvb');if(b){const r=b.getBoundingClientRect();d.style.left=(r.left+r.width/2)+'px';d.style.top=(r.bottom+4)+'px'}document.body.appendChild(d);setTimeout(()=>d.remove(),1300)}
+function gainXP(n){n=Math.round(n);if(!(n>0))return;const before=LV();S.xp=(S.xp||0)+n;save();xpPop(n);updLvUi();const after=LV();if(after>before)levelUp(before,after)}
+function levelUp(from,to){const got=LVP.filter(p=>p[0]>from&&p[0]<=to),bonus=to*10;S.coins=(S.coins||0)+bonus;save();document.querySelectorAll('.coinv').forEach(e=>e.textContent=S.coins);
+ // new perks start working right away in the current battle
+ got.forEach(p=>{if(p[1]==='pip')SK.pip++;if(p[1]==='mp')SK.mp++});
+ const old=document.getElementById('lvup');if(old)old.remove();const d=document.createElement('div');d.id='lvup';d.className='lvup';d.setAttribute('role','alert');
+ d.innerHTML=`<div class="lvcard"><div class="lvburst">⭐</div><h2>LEVEL UP!</h2><p class="lvbig">Lv ${to}</p><p class="lvname">${esc(lvTitle(to))}</p>${got.map(p=>`<p class="lvperk">${p[3]} ${esc(p[2])}</p>`).join('')}<p class="lvperk">🪙 +${bonus} coins</p><button class="btn" id="lvok">Yay!</button></div>`;
+ document.body.appendChild(d);const close=()=>{d.classList.add('out');setTimeout(()=>d.remove(),300)};d.querySelector('#lvok').onclick=close;d.onclick=e=>{if(e.target===d)close()};setTimeout(()=>{if(document.body.contains(d))close()},6000);
+ try{sfx('win')}catch(e){}speak('Level up! Level '+to+'!')}
+function levels(back){back=back||(()=>map());const v=lvOf(S.xp);
+ const rows=LVP.map(p=>`<div class="lvrow${v.L>=p[0]?' on':''}"><b>Lv ${p[0]}</b><span>${p[3]} ${esc(p[2])}</span><i>${v.L>=p[0]?'✔':'🔒'}</i></div>`).join('');
+ const ov=document.createElement('div');ov.className='lvup';ov.id='lvup';
+ ov.innerHTML=`<div class="lvcard lvlist"><h2>Lv ${v.L} · ${esc(lvTitle(v.L))}</h2><div class="xpbar big"><i class="xpfill" style="width:${v.into/v.need*100}%"></i></div><p>${v.into} / ${v.need} XP to Lv ${v.L+1}<br><small>全部經驗值 ${S.xp} XP · 拼字 +5、句子 +8、寶箱 +15、打敗魔王 +60</small></p>${rows}<button class="btn" id="lvok">OK</button></div>`;
+ const old=document.getElementById('lvup');if(old)old.remove();document.body.appendChild(ov);const close=()=>ov.remove();ov.querySelector('#lvok').onclick=close;ov.onclick=e=>{if(e.target===ov)close()}}
 // ---- Cloud save: log in with a username + password so the same progress follows the child to any device ----
 // Fill in from Supabase > Project Settings > API (Project URL + anon/publishable key). Leave blank to keep device-only saves.
 const CLOUD={url:'https://vpvftdwnkxocfqfunmrt.supabase.co',key:'sb_publishable_18FlVXd-olquZKSI1G2bCw_wJQAEn_t'};
@@ -522,7 +580,7 @@ function cloudMark(s){SYNC.state=s;document.querySelectorAll('.cloudst').forEach
 const fresh=()=>({name:'',cleared:0,dex:[]});
 const progressOf=s=>s?(s.cleared||0)*100000+(s.dex||[]).length*100+Math.min(99,(s.coins||0)/10|0):0;
 const hasProgress=s=>!!s&&((s.cleared||0)>0||(s.dex||[]).length>0||(s.coins||0)>0);
-function adopt(s){S=s;if(!S.dex)S.dex=[];if(!S.diary)S.diary=[...Array(Math.min(S.cleared||0,8)).keys()];try{localStorage.setItem('rq-save',JSON.stringify(S))}catch(e){}}
+function adopt(s){S=s;if(!S.dex)S.dex=[];if(!S.diary)S.diary=[...Array(Math.min(S.cleared||0,8)).keys()];ensureXp();try{localStorage.setItem('rq-save',JSON.stringify(S))}catch(e){}}
 // On start-up (already logged in): bring this device up to date with the cloud.
 async function cloudStartSync(){
  if(!ACC||!cloudOn())return;
@@ -605,7 +663,7 @@ function foeSvg(color,size,mood){const r=[38,46,54][size];const eyes=mood==='yaw
  const horns=size>0?`<path d="M62 ${90-r} l8 -16 l6 18Z M122 ${90-r} l-8 -16 l-6 18Z" fill="${color}"/>`:'';
  return `<svg viewBox="0 0 184 160">${horns}<path d="M${92-r} 120 Q${92-r} ${84-r} 92 ${84-r} Q${92+r} ${84-r} ${92+r} 120 Q${92+r} 146 92 146 Q${92-r} 146 ${92-r} 120Z" fill="${color}"/>${eyes}<ellipse cx="92" cy="150" rx="${r}" ry="6" fill="rgba(0,0,0,.12)"/></svg>`}
 function picHtml(z,p){return p.startsWith('#')?`<div class="pic swatch" style="background:${p}" aria-label="color"></div>`:`<div class="pic" aria-hidden="true">${p}</div>`}
-function hud(z){return `<div class="hud"><span>${esc(S.name)}'s Quest · ${z?esc(z.zh):'World Map'} ${muteHtml()}</span><span class="coins" aria-label="coins"><i class="coin"></i><b class="coinv">${S.coins||0}</b></span><span class="crystals">${UNITS.map(u=>`<i class="${unitDone(u)?'on':''}" style="${unitDone(u)?'background:'+u.color:''}"></i>`).join('')}</span></div>`}
+function hud(z){return `<div class="hud"><span>${esc(S.name)}'s Quest · ${z?esc(z.zh):'World Map'} ${muteHtml()}</span>${S.name?lvHtml():''}<span class="coins" aria-label="coins"><i class="coin"></i><b class="coinv">${S.coins||0}</b></span><span class="crystals">${UNITS.map(u=>`<i class="${unitDone(u)?'on':''}" style="${unitDone(u)?'background:'+u.color:''}"></i>`).join('')}</span></div>`}
 
 // ---------- scenes ----------
 function title(){
@@ -667,7 +725,7 @@ function clear(zi){
  const k=u.subs.indexOf(zi)+1;
  app.innerHTML=hud(z)+`<div class="panel arena" style="background:${unitEnd?u.color:z.color};color:#fff">
   <h2 style="font-size:2rem">Crystal shard ${k} / 4${unitEnd?'<br>You made '+esc(u.crystal)+'! Island '+(ui+1)+' clear!':''}</h2>
-  ${run?`<div class="result"><div class="stars" aria-label="${stars} stars">${[1,2,3].map(i=>`<i class="${i<=stars?'on':''}" style="animation-delay:${i*.3}s">★</i>`).join('')}</div><div class="stats"><span>✏️ ${run.words} words spelled</span><span>📝 ${run.sents} sentences</span><span>🔥 Best combo ${run.best}</span><span>🪙 +${run.coins} coins</span></div><small>${stars<3?'Fewer mistakes, more stars! Play this stage again from the island map.':'Perfect! 3 stars!'}</small></div>`:''}</div>
+  ${run?`<div class="result"><div class="stars" aria-label="${stars} stars">${[1,2,3].map(i=>`<i class="${i<=stars?'on':''}" style="animation-delay:${i*.3}s">★</i>`).join('')}</div><div class="stats"><span>✏️ ${run.words} words spelled</span><span>📝 ${run.sents} sentences</span><span>🔥 Best combo ${run.best}</span><span>🪙 +${run.coins} coins</span>${stars?`<span>🌟 +${stars*10} XP</span>`:''}</div><small>${stars<3?'Fewer mistakes, more stars! Play this stage again from the island map.':'Perfect! 3 stars!'}</small></div>`:''}</div>
   ${diaryHtml(zi,dNew)}
   <div class="story">${PIP}<div class="bubble">${(STORY[zi]?STORY[zi].outro:[z.outro]).map(l=>`<span class="en" style="display:block">${esc(nameIn(l))}</span>`).join('')}</div></div>
   ${choiceHtml(zi)}
@@ -676,7 +734,7 @@ function clear(zi){
   const lines=[esc(ZONES[zi].keeper)+': "'+esc(c[k*2+1])+'"'+(k===0?' 💛 +1 friend':'')];if(zi===7)lines.push(...endingLine().map(esc));
   document.getElementById('choice').innerHTML=`<h3>You: "${esc(c[k*2])}"</h3>${lines.map(l=>`<p>${l}</p>`).join('')}`;speak(c[k*2]+' '+c[k*2+1]);
   document.getElementById('gorow').style.display=''});
- speak(unitEnd?`You did it, ${S.name}!`:'Great job!');
+ speak(unitEnd?`You did it, ${S.name}!`:'Great job!');if(stars)setTimeout(()=>gainXP(stars*10),900);
  bindSay();document.getElementById('go').onclick=()=>storybook(bookOf(zi),()=>unitEnd?map():unitMap(ui));
 }
 // ---------- visual detail helpers ----------
@@ -763,6 +821,23 @@ function addBarn(g,grey){const T=THREE;const b=new T.Mesh(new T.BoxGeometry(1,.8
  for(const[x,z]of[[.7,.4],[.95,-.1]]){const s=new T.Mesh(new T.DodecahedronGeometry(.2),mat(grey?'#d9dde1':'#ffffff'));s.position.set(x,.95,z);g.add(s);const h=new T.Mesh(new T.BoxGeometry(.1,.12,.12),mat('#333'));h.position.set(x+.2,1,z);g.add(h)}
  for(let k=0;k<5;k++){const p=new T.Mesh(new T.BoxGeometry(.05,.25,.05),mat('#B98B5E'));p.position.set(-1.05+k*.22,.92,.85);g.add(p)}
  const rail=new T.Mesh(new T.BoxGeometry(1,.05,.04),mat('#B98B5E'));rail.position.set(-.6,.98,.85);g.add(rail)}
+// small signature props so each island on the sea map already shows its style (greyed while foggy)
+function mapProps(g,ui,grey){const T=THREE,gc=c=>grey?mixC(c,'#b7bfc6',.7):c;
+ const cone=(x,z,s,col,top)=>{const tr=new T.Mesh(new T.CylinderGeometry(.06*s,.08*s,.4*s,5),mat(gc('#8A5A33')));tr.position.set(x,.95+.2*s,z);g.add(tr);
+  const c=new T.Mesh(new T.ConeGeometry(.32*s,.7*s,6),mat(gc(col)));c.position.set(x,1.35+.45*s,z);g.add(c);if(top){const t=new T.Mesh(new T.ConeGeometry(.2*s,.3*s,6),mat(gc(top)));t.position.set(x,1.6+.55*s,z);g.add(t)}};
+ const ball=(x,z,s,col)=>{const tr=new T.Mesh(new T.CylinderGeometry(.05*s,.07*s,.4*s,5),mat(gc('#8A5A33')));tr.position.set(x,.95+.2*s,z);g.add(tr);const b=new T.Mesh(new T.IcosahedronGeometry(.3*s,0),mat(gc(col)));b.position.set(x,1.3+.4*s,z);g.add(b)};
+ const spots=[[1.05,-.75,1],[-1.1,.85,.8],[.1,-.2,1.2],[.8,.7,.9]];
+ if(ui===0){ball(1.05,-.75,1,'#f4a6c0');ball(-1.1,.85,.8,'#f8bfd3')}
+ else if(ui===1){ball(1.05,-.75,1,'#e9a23a');cone(-1.1,.85,.8,'#3E9E5A');for(const[x,z]of[[.9,.5],[1.2,.1]]){const h=new T.Mesh(new T.CylinderGeometry(.16,.16,.26,10),mat(gc('#e3c26a')));h.rotation.z=Math.PI/2;h.position.set(x,.95,z);g.add(h)}}
+ else if(ui===2){spots.forEach(([x,z,s])=>{for(let i=0;i<4;i++){const t=new T.Mesh(new T.CylinderGeometry(.04*s,.05*s,.25*s,5),mat(gc('#a8835a')));t.position.set(x+i*.02,.95+i*.22*s,z);g.add(t)}
+   for(let i=0;i<5;i++){const l=new T.Mesh(new T.ConeGeometry(.09*s,.6*s,4),mat(gc('#5ea64e')));l.position.set(x+Math.cos(i*1.26)*.22*s,1.85*s*.55+.85,z+Math.sin(i*1.26)*.22*s);l.rotation.set(Math.sin(i*1.26)*1.3,0,-Math.cos(i*1.26)*1.3);g.add(l)}})}
+ else if(ui===3)spots.forEach(([x,z,s])=>cone(x,z,s,'#3f7a5a','#ffffff'));
+ else if(ui===4)spots.forEach(([x,z,s],i)=>ball(x,z,s,['#e8833a','#d65a2e','#f2b33d','#e9a23a'][i]));
+ else if(ui===5){spots.forEach(([x,z,s],i)=>{const st=new T.Mesh(new T.CylinderGeometry(.06,.08,.3*s,6),mat(gc('#f4ede2')));st.position.set(x,1+.15*s,z);g.add(st);
+   const cap=new T.Mesh(new T.SphereGeometry(.22*s,10,6,0,Math.PI*2,0,Math.PI/2),new T.MeshStandardMaterial({color:gc(['#c46aa8','#6ac4c4','#f2c230','#9a7be0'][i]),emissive:grey?'#000':['#c46aa8','#6ac4c4','#f2c230','#9a7be0'][i],emissiveIntensity:.5,flatShading:true}));cap.position.set(x,1+.3*s,z);g.add(cap)})}
+ else if(ui===6)spots.forEach(([x,z,s],i)=>{const c=new T.Mesh(new T.OctahedronGeometry(.22*s,0),new T.MeshStandardMaterial({color:gc(['#b58be0','#8fb8f0','#f0a6d8','#b58be0'][i]),emissive:grey?'#000':'#7a5ad0',emissiveIntensity:.3,flatShading:true}));c.scale.y=2;c.position.set(x,1.25,z);g.add(c)});
+ else if(ui===7){for(let i=0;i<4;i++){const c=new T.Mesh(new T.CylinderGeometry(.26-i*.03,.3-i*.03,.4,10),mat(gc(i%2?'#db6a41':'#fff8f4')));c.position.set(.6,1.05+i*.4,-.4);g.add(c)}
+   const lt=new T.Mesh(new T.ConeGeometry(.24,.3,10),mat(gc('#5C6B7A')));lt.position.set(.6,2.8,-.4);g.add(lt);cone(-1.1,.85,.8,'#3E9E5A')}}
 function rebuild(){
  const T=THREE;W.isl.clear();W.foams=[];W.labels.forEach(l=>l.el.remove());W.labels=[];W.spin=[];W.bob=[];W.fogs=[];W.hits=[];
  const lab=document.getElementById('labels');
@@ -770,11 +845,11 @@ function rebuild(){
   const[x,z]=ISL[ui],g=new T.Group();g.position.set(x,0,z);g.userData.ui=ui;
   const ready=u.subs.length>0,done=unitDone(u),open=ready&&u.subs[0]<=S.cleared,grey=!open&&!done;
   const base=new T.Mesh(bumpy(new T.CylinderGeometry(1.95,1.45,.8,20,1),.06,ui),mat(grey?'#cfd5da':'#EBD49B'));base.position.y=.15;g.add(base);
-  const top=new T.Mesh(bumpy(new T.CylinderGeometry(1.75,1.85,.3,20,1),.06,ui),mat(grey?'#a3adb6':done?'#6CC36A':'#8BCB6E'));top.position.y=.68;g.add(top);
+  const TH=THEME[ui];const top=new T.Mesh(bumpy(new T.CylinderGeometry(1.75,1.85,.3,20,1),.06,ui),mat(grey?mixC(TH.top,'#a3adb6',.75):TH.top));top.position.y=.68;g.add(top);
   const ring=shallowRing(2.05,2.9);g.add(ring);W.foams.push(ring.children[1]);
   scatter(g,1.6,.83,grey?14:45,!grey,(x,z)=>Math.hypot(x+.15,z+.2)<.75);rock(g,1.5,.5,1,.85);rock(g,-.6,-1.3,.8,.85);
   if(ui===0)addHouse(g,u.color,grey);else if(ui===1)addBarn(g,grey);
-  addTree(g,1.05,-.75,1,grey);addTree(g,-1.1,.85,.8,grey);if(ui>1){addTree(g,.1,-.2,1.3,grey);addTree(g,.8,.7,.9,grey)}
+  mapProps(g,ui,grey);
   const cr=new T.Mesh(new T.OctahedronGeometry(.36),new T.MeshPhongMaterial({color:done?u.color:'#ffffff',emissive:done?u.color:'#000000',emissiveIntensity:.35,transparent:!done,opacity:done?1:.45,flatShading:true}));
   cr.position.y=2.75;g.add(cr);W.spin.push(cr);
   if(open&&!done){const ar=new T.Mesh(new T.ConeGeometry(.28,.55,4),mat('#F2A93B'));ar.rotation.x=Math.PI;ar.position.y=3.55;g.add(ar);W.bob.push(ar)}
@@ -988,11 +1063,14 @@ function roundRect(w,h,r){const s=new THREE.Shape(),x=-w/2,y=-h/2;s.moveTo(x+r,y
 function slab(par,w,h,r,depth,color,top,bevel){const g=new THREE.ExtrudeGeometry(roundRect(w,h,r),{depth,bevelEnabled:!!bevel,bevelThickness:.15,bevelSize:.15,bevelSegments:2,curveSegments:10});g.rotateX(-Math.PI/2);return put(par,g,color,0,top-depth,0)}
 function tree(par,x,z,s,kind){const g=new THREE.Group();g.position.set(x,.2,z);g.scale.setScalar(s);g.rotation.y=rnd(0,6);par.add(g);
  cyl(g,.13,.2,1.2,'#7a5638',0,0,0,6);
+ if(kind===5){[[1.6,1.1,1.5],[2.4,.85,1.2],[3.1,.6,.95]].forEach(([y,r,h])=>{put(g,geo('pine'+r,()=>new THREE.ConeGeometry(r,h,8)),'#3f7a5a',0,y,0);put(g,geo('snow'+r,()=>new THREE.ConeGeometry(r*.62,h*.45,8)),'#ffffff',0,y+h*.3,0)});return g}
+ if(kind===6){g.children[0].material=M('#cfc4e6');crystalRock(g,0,0,1.6).position.y=1.1;return g}
  if(kind===1){put(g,geo('cyp',()=>new THREE.IcosahedronGeometry(.8,1)),'#4f8f4a',0,2.3,0).scale.set(.8,2,.8)}
  else{const greens=['#6aa35a','#5e9a55','#7bb167','#89bd6e'],f=geo('leaf',()=>new THREE.IcosahedronGeometry(.85,1));
   [[0,1.95,0,1.2],[.55,2.2,.3,.85],[-.5,2.25,-.2,.9],[.1,2.75,-.1,.8]].forEach(([a,b,c,sc])=>put(g,f,pk(greens),a,b,c).scale.setScalar(sc));
   if(kind===2)for(let i=0;i<7;i++){const a=rnd(0,6.28);put(g,geo('fruit',()=>new THREE.SphereGeometry(.13,10,8)),M(pk(['#f28a3c','#e8503a','#f2c230']),{roughness:.55}),Math.cos(a)*.9,rnd(1.8,2.6),Math.sin(a)*.9)}}
- if(kind===3){const g2=g.children;g.children.slice(1).forEach(m=>m.material=M(pk(['#f4a6c0','#f8bfd3','#ee93b3'])))}
+ if(kind===3){g.children.slice(1).forEach(m=>m.material=M(pk(['#f4a6c0','#f8bfd3','#ee93b3'])))}
+ if(kind===4){g.children.slice(1).forEach(m=>m.material=M(pk(['#e8833a','#f2b33d','#d65a2e','#e9a23a'])))}
  return g}
 function palm(par,x,z,s){const g=new THREE.Group();g.position.set(x,.2,z);g.scale.setScalar(s);par.add(g);
  for(let i=0;i<6;i++)put(g,geo('pseg',()=>new THREE.CylinderGeometry(.14,.17,.55,6)),i%2?'#a8835a':'#8f6d48',i*.08,.28+i*.52,0).rotation.z=-.08;
@@ -1020,27 +1098,86 @@ function bridge(par,x,z){const g=new THREE.Group();g.position.set(x,.2,z);par.ad
  for(const sx of[-1.3,1.3]){for(let i=-3;i<=3;i+=2)box(g,.12,.6,.12,'#8a5a33',sx,.25,i*.4);const r=put(g,new THREE.BoxGeometry(.08,.08,2.6),'#8a5a33',sx,.8,0)}return g}
 function arch(par,x,z,col){const g=new THREE.Group();g.position.set(x,.2,z);par.add(g);for(const sx of[-1.8,1.8])box(g,.6,2.6,.6,'#e8dccd',sx,0,0);
  const a=put(g,new THREE.TorusGeometry(1.8,.28,10,24,Math.PI),'#e8dccd',0,2.6,0);put(g,new THREE.SphereGeometry(.3,14,10),M(col,{emissive:col,emissiveIntensity:.35}),0,4.55,0);return g}
-function tufts(par,n,ok){const im=new THREE.InstancedMesh(new THREE.ConeGeometry(.07,.32,3),M('#8db86f'),n),d=new THREE.Object3D();let k=0,guard=0;
+function tufts(par,n,ok,col){const im=new THREE.InstancedMesh(new THREE.ConeGeometry(.07,.32,3),M(col||'#8db86f'),n),d=new THREE.Object3D();let k=0,guard=0;
  while(k<n&&guard++<n*8){const x=rnd(-10.5,10.5),z=rnd(-19,19);if(!ok(x,z))continue;d.position.set(x,.3,z);d.rotation.set(rnd(-.2,.2),rnd(0,3),rnd(-.2,.2));d.scale.setScalar(rnd(.6,1.3));d.updateMatrix();im.setMatrixAt(k++,d.matrix)}
  im.count=k;im.receiveShadow=true;par.add(im)}
 
+// ---- island looks: every island has its own sky, sea, ground colours, trees, falling particles and set pieces ----
+// trees: kinds for tree() — 0 round green, 1 tall cypress, 2 fruit, 3 pink blossom, 4 autumn, 5 snowy pine, 6 crystal
+const THEME=[
+ {name:'Blossom Town',sky:['#8fcdf0','#ffe3ea'],fog:'#ffe9ee',sea:['#a4d8e0','#5f9fc0'],cliff:['#e6c9b8','#d3b5a6','#f2ddd0'],rim:'#fff6f6',grass:'#9fcb7c',path:'#f1dccb',edge:'#e6cfc2',tuft:'#8fc26f',
+  trees:[3,3,0,1],start:'blossom',fall:'petal',sun:'#fff0e6',hemi:['#fff0f6','#8f8270'],ridge:['#c4b0c8','#b4a9cc'],top:'#a2d283'},
+ {name:'Golden Farm',sky:['#f2b56b','#fff0c9'],fog:'#fbe6bf',sea:['#9fd3cf','#4f94ad'],cliff:['#d9b98c','#c49d6c','#e9cfa4'],rim:'#fff3dc',grass:'#b8c868',path:'#d8b384',edge:'#b98e5e',tuft:'#c9c264',
+  trees:[2,4,0,4],start:'sunflower',fall:'leaf',sun:'#ffd9a0',hemi:['#fff2d6','#8f7350'],ridge:['#d7b77a','#c9a86e'],top:'#c7cf6a'},
+ {name:'Sunny Beach',sky:['#4fc3f7','#e9fbff'],fog:'#e6f8fc',sea:['#7fe3e0','#1f9fc4'],cliff:['#f0dcae','#e2c891','#f8ebc8'],rim:'#fffaf0',grass:'#e9dca6',path:'#fff3d6',edge:'#f4e3b5',tuft:'#b8cf7a',
+  trees:[0,0,1],start:'palm',fall:null,sun:'#fff8e0',hemi:['#f0fbff','#c0a070'],ridge:['#9fd0d8','#b7dde3'],top:'#f1e1a8'},
+ {name:'Snowy Hill',sky:['#a9c9ec','#f2f7fc'],fog:'#eef4fa',sea:['#b2d6e6','#5a86a8'],cliff:['#d7dde6','#c3cad6','#e8edf3'],rim:'#ffffff',grass:'#eef3f8',path:'#dfe6ee',edge:'#c9d1db',tuft:'#d9e3ec',
+  trees:[5,5,5,1],start:'pine',fall:'snow',sun:'#f4f8ff',hemi:['#f4f8ff','#8a96a8'],ridge:['#dfe7f0','#cbd6e3'],top:'#f4f7fb'},
+ {name:'Maple Woods',sky:['#f6a96b','#ffe6c9'],fog:'#fbe0c6',sea:['#a3c9c9','#4f7f99'],cliff:['#d5ad8c','#bf916d','#e7c7a8'],rim:'#fff1e2',grass:'#c9b064',path:'#e6c49c',edge:'#b98e66',tuft:'#c79a4e',
+  trees:[4,4,4,0],start:'autumn',fall:'leaf',sun:'#ffd2a0',hemi:['#fff0dc','#7f6248'],ridge:['#c9926a','#b98860'],top:'#d3a95a'},
+ {name:'Firefly Night',sky:['#1d2858','#5a5ca8'],fog:'#3a3f7a',sea:['#3f6f9a','#17284f'],cliff:['#7a7aa8','#66679a','#8d8db8'],rim:'#c9c9e6',grass:'#4f8a6a',path:'#a9a6cf',edge:'#7f7cb0',tuft:'#4a7f62',
+  trees:[1,0,1],start:'mushroom',fall:'firefly',sun:'#aab8ff',hemi:['#8a96d8','#2a2a4a'],ridge:['#2f3570','#3a4080'],top:'#4f8a6a',dark:true},
+ {name:'Crystal Forest',sky:['#a07ce0','#f3e6ff'],fog:'#efe3fb',sea:['#b7c3f0','#6a62b8'],cliff:['#cdbbe3','#b9a6d6','#ded0ee'],rim:'#fbf6ff',grass:'#a7c9a0',path:'#e6dcf4',edge:'#c7b7e0',tuft:'#9cc29a',
+  trees:[6,6,3,1],start:'crystal',fall:'sparkle',sun:'#f6ecff',hemi:['#f6efff','#7a6a9a'],ridge:['#b9a6dc','#c8b9e6'],top:'#b2d3a6'},
+ {name:'Sky Lighthouse',sky:['#6f8fc7','#f9d3b8'],fog:'#efd6c8',sea:['#9fbcd0','#466a8f'],cliff:['#c7c3c9','#b2adb6','#dad6db'],rim:'#f8f4f2',grass:'#a9c08e',path:'#e3ddd8',edge:'#bdb6b8',tuft:'#9fb88a',
+  trees:[1,0,1],start:'rock',fall:'sparkle',sun:'#ffe1c4',hemi:['#fff2ea','#7a7480'],ridge:['#a9a6c0','#bdb5c8'],top:'#b3c79a'}];
+// the 4 stages of an island happen at different times of day: morning, noon, afternoon, golden sunset for the last one
+const TOD=[{tint:'#cfe8ff',k:.12,sun:1},{tint:null,k:0,sun:1.05},{tint:'#ffe6b0',k:.12,sun:.98},{tint:'#ff9a6a',k:.32,sun:.85}];
+const mixC=(a,b,k)=>b&&k?'#'+new THREE.Color(a).lerp(new THREE.Color(b),k).getHexString():a;
+// falling petals / leaves / snow / fireflies / sparkles around the hero
+function particles(sc,anim,kind){if(!kind)return;const T=THREE,N=LITE?70:130;
+ const cols={petal:['#f8b7cc','#fbd0de','#f49ab8'],leaf:['#e8833a','#f2b33d','#d65a2e','#c9a23a'],snow:['#ffffff'],firefly:['#fff59a','#d9ff8a'],sparkle:['#ffffff','#ffe9a8','#e7d4ff']}[kind];
+ const glow=kind==='firefly'||kind==='sparkle';
+ const g=kind==='snow'?new T.IcosahedronGeometry(.07,0):glow?new T.OctahedronGeometry(.06,0):new T.PlaneGeometry(.18,.12);
+ const m=new T.MeshBasicMaterial({color:'#ffffff',side:T.DoubleSide,transparent:glow,opacity:glow?.9:1});
+ const im=new T.InstancedMesh(g,m,N),d=new T.Object3D(),c=new T.Color(),ps=[];
+ for(let i=0;i<N;i++){ps.push({x:rnd(-12,12),y:rnd(.5,10),z:rnd(-20,20),s:rnd(.4,1),ph:rnd(0,6.28),r:rnd(0,6.28)});im.setColorAt(i,c.set(pk(cols)))}
+ im.instanceColor.needsUpdate=true;im.frustumCulled=false;sc.add(im);
+ const fallV=kind==='snow'?.7:kind==='firefly'?0:kind==='sparkle'?.15:.55;
+ anim.push((t,dt)=>{dt=RM?0:(dt||.016);for(let i=0;i<N;i++){const p=ps[i];
+   if(kind==='firefly'){p.x+=Math.sin(t*.7+p.ph)*dt*.5;p.z+=Math.cos(t*.6+p.ph)*dt*.5;p.y=1+Math.abs(Math.sin(t*.4+p.ph))*3}
+   else{p.y-=fallV*p.s*dt;p.x+=Math.sin(t*1.3+p.ph)*dt*.6+dt*.25;p.r+=dt*2*p.s;if(p.y<.3){p.y=rnd(7,11);p.x=rnd(-12,12);p.z=rnd(-20,20)}if(p.x>12.5)p.x=-12}
+   const tw=glow?.6+.4*Math.sin(t*4+p.ph):1;d.position.set(p.x,p.y,p.z);d.rotation.set(p.r,p.r*.7,p.r*.3);d.scale.setScalar(p.s*tw);d.updateMatrix();im.setMatrixAt(i,d.matrix)}
+  im.instanceMatrix.needsUpdate=true})}
+function sunflower(par,x,z,s){const g=new THREE.Group();g.position.set(x,.2,z);g.scale.setScalar(s||1);g.rotation.y=rnd(-.5,.5);par.add(g);
+ cyl(g,.04,.05,1.5,'#4f8f4a',0,0,0,5);put(g,geo('sfleaf',()=>new THREE.SphereGeometry(.18,8,6)),'#5e9a55',.15,.6,0).scale.set(1,.3,.6);
+ const h=new THREE.Group();h.position.set(0,1.55,.05);h.rotation.x=-.35;g.add(h);
+ for(let i=0;i<10;i++){const a=i/10*6.28,p=put(h,geo('petal2',()=>new THREE.SphereGeometry(.12,6,4)),'#f6c026',Math.cos(a)*.24,Math.sin(a)*.24,0);p.scale.set(1,.45,.25);p.rotation.z=a}
+ put(h,geo('sfdisc',()=>new THREE.CylinderGeometry(.17,.17,.06,12)),'#6b4226',0,0,.03).rotation.x=Math.PI/2;return g}
+function scarecrow(par,x,z){const g=new THREE.Group();g.position.set(x,.2,z);par.add(g);cyl(g,.06,.06,2,'#8a5a33',0,0,0,6);box(g,1.4,.1,.1,'#8a5a33',0,1.45,0);
+ box(g,.55,.7,.32,'#3f7cc4',0,.95,0);put(g,new THREE.SphereGeometry(.26,12,10),'#f2d9a8',0,1.95,0);put(g,new THREE.ConeGeometry(.42,.45,12),'#d9a441',0,2.3,0);
+ for(const sx of[-1,1])put(g,geo('straw',()=>new THREE.ConeGeometry(.08,.3,5)),'#e3c26a',sx*.72,1.38,0).rotation.z=sx*1.6;return g}
+function wheat(par,anim,x0,z0,w,dd){const T=THREE,n=Math.round(w*dd*7),im=new T.InstancedMesh(new T.ConeGeometry(.05,.75,4),M('#e6c35c'),n),d=new T.Object3D();
+ for(let i=0;i<n;i++){d.position.set(x0+rnd(0,w),.55,z0+rnd(0,dd));d.rotation.set(rnd(-.15,.15),rnd(0,3),rnd(-.15,.15));d.scale.setScalar(rnd(.8,1.2));d.updateMatrix();im.setMatrixAt(i,d.matrix)}
+ im.castShadow=true;im.receiveShadow=true;const g=new T.Group();g.add(im);par.add(g);
+ // the whole field leans gently in the wind
+ anim.push(t=>{if(!RM)im.rotation.z=Math.sin(t*1.4+x0)*.025});
+ const edge=M('#d0a94a');for(let i=0;i<6;i++){const s=put(par,geo('wtop',()=>new T.SphereGeometry(.06,5,4)),edge,x0+rnd(0,w),1,z0+rnd(0,dd),true);s.scale.y=2}return g}
+function bunting(par,anim,x1,z1,x2,z2,h){const T=THREE,cols=['#e5484d','#f2b84b','#4fa65a','#3a7bd5','#b58be0','#f08ab0'];
+ for(const [x,z] of[[x1,z1],[x2,z2]])cyl(par,.06,.08,h,'#8a5a33',x,.2,z,6);
+ const L=Math.hypot(x2-x1,z2-z1),n=Math.floor(L/.55),flags=[];
+ for(let i=1;i<n;i++){const t=i/n,sag=Math.sin(t*Math.PI)*.5,f=put(par,geo('flagtri',()=>{const s=new T.Shape();s.moveTo(-.18,0);s.lineTo(.18,0);s.lineTo(0,-.38);s.lineTo(-.18,0);return new T.ShapeGeometry(s)}),new T.MeshStandardMaterial({color:cols[i%cols.length],side:T.DoubleSide,roughness:.8}),x1+(x2-x1)*t,h+.15-sag,z1+(z2-z1)*t,true);
+  f.rotation.y=Math.atan2(x2-x1,z2-z1)-Math.PI/2;flags.push(f)}
+ anim.push(t=>{if(!RM)flags.forEach((f,i)=>f.rotation.x=Math.sin(t*2.4+i)*.25)})}
+function crystalRock(par,x,z,s,col){const g=new THREE.Group();g.position.set(x,.2,z);g.scale.setScalar(s||1);par.add(g);
+ for(let i=0;i<4;i++){const c=put(g,geo('cry',()=>new THREE.OctahedronGeometry(.35,0)),M(col||pk(['#b58be0','#8fb8f0','#f0a6d8']),{emissive:col||'#7a5ad0',emissiveIntensity:.25,roughness:.3}),rnd(-.3,.3),.4,rnd(-.3,.3));c.scale.set(.6,rnd(1.4,2.4),.6);c.rotation.set(rnd(-.4,.4),rnd(0,3),rnd(-.4,.4))}return g}
 const PATH={z0:15.5,boss:-13,stations:[10,4.5,-1.5,-7],hp:[2,2,3,3],half:3.4,stream:6.9};
 const pathX=z=>Math.sin(z*.19)*2.2;
 const IW=22,ID=40;
 function buildArena(zi){
- const T=THREE,z=ZONES[zi],ui=unitOf(zi),sc=new T.Scene(),anim=[],farm=ui===1,v=zi%4;
- sc.fog=new T.Fog('#f4eee3',60,240);
- const hemi=new T.HemisphereLight(0xeef6fa,0x8f8270,.6);sc.add(hemi);
- const sun=new T.DirectionalLight(0xfff1dd,.72);sun.position.set(-18,34,16);sun.castShadow=true;sun.shadow.mapSize.set(SHADOW,SHADOW);
+ const T=THREE,z=ZONES[zi],ui=unitOf(zi),sc=new T.Scene(),anim=[],farm=ui===1,v=zi%4,TH=THEME[ui]||THEME[0],tod=TOD[v],tc=c=>mixC(c,tod.tint,tod.k);
+ sc.fog=new T.Fog(tc(TH.fog),60,240);
+ const hemi=new T.HemisphereLight(TH.hemi[0],TH.hemi[1],TH.dark?.45:.6);sc.add(hemi);
+ const sun=new T.DirectionalLight(tc(TH.sun),(TH.dark?.45:.72)*tod.sun);sun.position.set(-18,34,16);sun.castShadow=true;sun.shadow.mapSize.set(SHADOW,SHADOW);
  Object.assign(sun.shadow.camera,{left:-26,right:26,top:26,bottom:-26,near:1,far:100});sun.shadow.bias=-.0006;sun.shadow.normalBias=.045;sc.add(sun);
  const fill=new T.DirectionalLight(0xbfd6ff,.14);fill.position.set(24,14,-20);sc.add(fill);
- const skyMat=new T.ShaderMaterial({side:T.BackSide,depthWrite:false,fog:false,uniforms:{top:{value:new T.Color('#9fd0ec')},bottom:{value:new T.Color('#f4eee3')}},
+ const skyMat=new T.ShaderMaterial({side:T.BackSide,depthWrite:false,fog:false,uniforms:{top:{value:new T.Color(mixC(TH.sky[0],tod.tint,tod.k*.6))},bottom:{value:new T.Color(tc(TH.sky[1]))}},
   vertexShader:'varying vec3 vP;void main(){vP=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
   fragmentShader:'uniform vec3 top;uniform vec3 bottom;varying vec3 vP;void main(){float h=smoothstep(-0.02,0.55,normalize(vP).y);gl_FragColor=vec4(mix(bottom,top,h),1.0);}'});
  const sky=new T.Mesh(new T.SphereGeometry(400,32,20),skyMat);sc.add(sky);
  // sea: shallow turquoise near the cliffs fading to deep blue, with glints
  const waterMat=new T.ShaderMaterial({fog:true,extensions:{derivatives:true},
-  uniforms:T.UniformsUtils.merge([T.UniformsLib.fog,{uShallow:{value:new T.Color('#a4d4da')},uDeep:{value:new T.Color('#5f9fb6')},uTime:{value:0}}]),
+  uniforms:T.UniformsUtils.merge([T.UniformsLib.fog,{uShallow:{value:new T.Color(tc(TH.sea[0]))},uDeep:{value:new T.Color(TH.sea[1])},uTime:{value:0}}]),
   vertexShader:'varying vec3 vW;\n#include <fog_pars_vertex>\nvoid main(){vec4 wp=modelMatrix*vec4(position,1.0);vW=wp.xyz;vec4 mvPosition=viewMatrix*wp;gl_Position=projectionMatrix*mvPosition;\n#include <fog_vertex>\n}',
   fragmentShader:`uniform vec3 uShallow;uniform vec3 uDeep;uniform float uTime;varying vec3 vW;
 #include <fog_pars_fragment>
@@ -1056,27 +1193,36 @@ float g=pow(max(sin(vW.x*1.7+uTime*2.1)*sin(vW.z*1.9-uTime*1.6),0.0),26.0);c+=g*
  anim.push(t=>{waterMat.uniforms.uTime.value=t;foam.material.opacity=.35+Math.sin(t*1.3)*.15;
   if(RM)return;const p=seaG.attributes.position.array;for(let i=0;i<p.length;i+=3){const x=seaBase[i],zz=seaBase[i+2];p[i+1]=Math.sin(x*.28+t*1.1)*.16+Math.cos(zz*.23+t*.9)*.14}seaG.attributes.position.needsUpdate=true});
  // island: layered clay cliff, sand rim, grass top
- slab(sc,IW+3,ID+3,7,3.6,'#dcc9b4',0,true);
- for(let i=0;i<3;i++){const r=slab(sc,IW+3.32,ID+3.32,7.15,.09,i%2?'#c5b5a7':'#e8d9c8',-.5-i*.8);r.castShadow=false}
- slab(sc,IW+1.4,ID+1.4,6.4,.2,'#fff8f4',.15);
- slab(sc,IW,ID,6,.4,farm?'#a8c77c':'#9cc27a',.05,true);
+ slab(sc,IW+3,ID+3,7,3.6,TH.cliff[0],0,true);
+ for(let i=0;i<3;i++){const r=slab(sc,IW+3.32,ID+3.32,7.15,.09,i%2?TH.cliff[1]:TH.cliff[2],-.5-i*.8);r.castShadow=false}
+ slab(sc,IW+1.4,ID+1.4,6.4,.2,TH.rim,.15);
+ slab(sc,IW,ID,6,.4,TH.grass,.05,true);
  // winding cream path with edge stones
  const pts=[];for(let pz=PATH.z0+3;pz>=PATH.boss-3.5;pz-=1.2)pts.push([pathX(pz),pz]);
  for(let i=0;i<pts.length-1;i++){const[x1,z1]=pts[i],[x2,z2]=pts[i+1],dx=x2-x1,dz=z2-z1,L=Math.hypot(dx,dz),a=Math.atan2(dx,dz);
-  put(sc,new T.BoxGeometry(2.3,.06,L+.6),'#e9dcc4',(x1+x2)/2,.23,(z1+z2)/2,true).rotation.y=a;
-  for(const side of[-1,1]){const e=put(sc,geo('edge',()=>new T.BoxGeometry(.3,.1,.5)),'#ddd2c0',(x1+x2)/2+Math.cos(a)*side*1.22,.25,(z1+z2)/2-Math.sin(a)*side*1.22,true);e.rotation.y=a}}
+  put(sc,new T.BoxGeometry(2.3,.06,L+.6),TH.path,(x1+x2)/2,.23,(z1+z2)/2,true).rotation.y=a;
+  for(const side of[-1,1]){const e=put(sc,geo('edge',()=>new T.BoxGeometry(.3,.1,.5)),TH.edge,(x1+x2)/2+Math.cos(a)*side*1.22,.25,(z1+z2)/2-Math.sin(a)*side*1.22,true);e.rotation.y=a}}
  const cols=[['#f08a9c','#f2b84b','#ffffff','#b58be0','#ef6a5a'],['#ffffff','#f2b84b','#ef6a5a'],['#b58be0','#8fb8f0','#ffffff'],['#f2b84b','#f28a3c','#ef6a5a']][v];
  const side=(z,o)=>pathX(z)+o;const both=f=>[-1,1].forEach(f);
  const avoid=[];const free=(x,z,r)=>!avoid.some(([ax,az,ar])=>Math.hypot(x-ax,z-az)<ar+r);const mark=(x,z,r)=>avoid.push([x,z,r]);
  // 1) start beach: palms, sign, flag
- both(s=>{const x=side(PATH.z0+1,s*5.2);palm(sc,x,PATH.z0+2.5,1);mark(x,PATH.z0+2.5,1);palm(sc,side(PATH.z0-1,s*7.5),PATH.z0,.85)});
+ both(s=>{const x=side(PATH.z0+1,s*5.2),x2=side(PATH.z0-1,s*7.5),st=TH.start;mark(x,PATH.z0+2.5,1);
+  if(st==='palm'||st==='rock'){palm(sc,x,PATH.z0+2.5,1);palm(sc,x2,PATH.z0,.85)}
+  else if(st==='blossom'){tree(sc,x,PATH.z0+2.5,1.05,3);tree(sc,x2,PATH.z0,.9,3);flowers(sc,x-s*1.2,PATH.z0+1,6,['#f8b7cc','#ffffff','#f49ab8'])}
+  else if(st==='sunflower'){for(let k=0;k<5;k++)sunflower(sc,x+rnd(-1,1),PATH.z0+2.5+rnd(-1,1),rnd(.9,1.2));tree(sc,x2,PATH.z0,.9,4)}
+  else if(st==='pine'){tree(sc,x,PATH.z0+2.5,1,5);tree(sc,x2,PATH.z0,.85,5)}
+  else if(st==='autumn'){tree(sc,x,PATH.z0+2.5,1,4);tree(sc,x2,PATH.z0,.85,4)}
+  else if(st==='mushroom'){for(let k=0;k<4;k++)mushroom(sc,x+rnd(-1,1),PATH.z0+2.5+rnd(-1,1),rnd(1.4,2.2));tree(sc,x2,PATH.z0,.85,1)}
+  else if(st==='crystal'){crystalRock(sc,x,PATH.z0+2.5,1.4);tree(sc,x2,PATH.z0,.9,6)}});
+ if(TH.start==='sunflower')scarecrow(sc,side(PATH.z0-1.5,-3.6),PATH.z0-1.5);
+ if(TH.start==='blossom')bunting(sc,anim,side(PATH.z0-2.5,-2),PATH.z0-2.5,side(PATH.z0-2.5,2),PATH.z0-2.5,2.6);
  cyl(sc,.06,.06,1.8,'#8a5a33',pathX(PATH.z0)+1.6,.2,PATH.z0);const flag=put(sc,new T.PlaneGeometry(.8,.5),new T.MeshStandardMaterial({color:z.color,side:T.DoubleSide,roughness:.8}),pathX(PATH.z0)+2,1.7,PATH.z0,true);
  anim.push(t=>{flag.rotation.y=Math.sin(t*3)*.25});
  // 2) a stream with a wooden bridge
- const stream=put(sc,new T.BoxGeometry(IW-1,.08,1.5),new T.MeshStandardMaterial({color:'#8fd0dc',roughness:.25,metalness:.05}),0,.24,PATH.stream,true);
+ const stream=put(sc,new T.BoxGeometry(IW-1,.08,1.5),new T.MeshStandardMaterial({color:TH.sea[0],roughness:.25,metalness:.05}),0,.24,PATH.stream,true);
  for(const sx of[-1,1])for(let i=0;i<6;i++)stone(sc,sx*rnd(2,10),PATH.stream+(Math.random()<.5?-.9:.9),rnd(.5,.9));
  bridge(sc,pathX(PATH.stream),PATH.stream);
- anim.push(t=>{stream.material.color.setHSL(.53,.45,.7+Math.sin(t*2)*.03)});
+ {const sc0=new T.Color(TH.sea[0]),hsl=sc0.getHSL({});anim.push(t=>{stream.material.color.setHSL(hsl.h,hsl.s,hsl.l+Math.sin(t*2)*.03)})}
  // 3) varied middle features per stage
  const feat=[['garden','orchard'],['pond','grove'],['orchard','garden'],['grove','pond']][v];
  const zone=(name,z0,z1)=>{const zm=(z0+z1)/2;
@@ -1096,6 +1242,8 @@ float g=pow(max(sin(vW.x*1.7+uTime*2.1)*sin(vW.z*1.9-uTime*1.6),0.0),26.0);c+=g*
  else{both(s=>{cottage(sc,side(tz0-1,s*6.4),tz0-1,1.2,pk(['#fff3e4','#fde8ef','#eaf3ff']),pk(['#e0603a','#3f7cc4','#9a6bc4']),s>0?-Math.PI/2:Math.PI/2);
   fence(sc,side(tz0+.6,s*4.4),tz0+.6,side(tz1,s*4.4),tz1);flowers(sc,side(tz1+.8,s*5.4),tz1+.8,7,cols)});
   box(sc,.3,.9,.3,'#8a5a33',side(tz0-2.4,2),.2,tz0-2.4);box(sc,.5,.35,.4,'#3f7cc4',side(tz0-2.4,2),1.1,tz0-2.4)}
+ if(farm){both(s=>wheat(sc,anim,s>0?5.2:-9.6,PATH.stream+1.6,4.4,3.2))}
+ if(TH.start==='blossom')bunting(sc,anim,side(PATH.stations[1]-.8,-2),PATH.stations[1]-.8,side(PATH.stations[1]-.8,2),PATH.stations[1]-.8,2.6);
  // 5) boss plaza: round stone floor, lamps, glowing arch, home/barn behind
  const bx=pathX(PATH.boss);put(sc,new T.CylinderGeometry(4,4,.1,32),'#ece2d2',bx,.24,PATH.boss,true);
  for(let i=0;i<12;i++){const a=i/12*6.28;put(sc,geo('pstone',()=>new T.BoxGeometry(.5,.12,.3)),'#ddd2c0',bx+Math.cos(a)*4.1,.27,PATH.boss+Math.sin(a)*4.1,true).rotation.y=-a}
@@ -1104,11 +1252,12 @@ float g=pow(max(sin(vW.x*1.7+uTime*2.1)*sin(vW.z*1.9-uTime*1.6),0.0),26.0);c+=g*
  const deco=new T.Group();deco.scale.setScalar(2.6);deco.position.set(bx,-1.5,PATH.boss-5.2);sc.add(deco);
  if(farm)addBarn(deco,false);else addHouse(deco,UNITS[0].color,false);
  // edges: trees, bushes and rocks all around, sparser near the path
- for(let zz=-18;zz<=18;zz+=2.2)both(s=>{const x=s*rnd(8.8,10);if(free(x,zz,1))(Math.random()<.6?tree(sc,x,zz,rnd(.85,1.2),Math.random()<.3?1:0):bush(sc,x,zz,null,rnd(1,1.5)));if(Math.random()<.4)stone(sc,s*rnd(9.6,10.4),zz+1,rnd(.7,1.2))});
- tufts(sc,1100,(x,zz)=>Math.abs(x-pathX(zz))>1.5&&Math.abs(zz-PATH.stream)>1&&Math.hypot(x-bx,zz-PATH.boss)>4.3);
+ for(let zz=-18;zz<=18;zz+=2.2)both(s=>{const x=s*rnd(8.8,10);if(free(x,zz,1))(Math.random()<.6?tree(sc,x,zz,rnd(.85,1.2),pk(TH.trees)):bush(sc,x,zz,TH.dark?'#3f6f58':null,rnd(1,1.5)));if(Math.random()<.4)stone(sc,s*rnd(9.6,10.4),zz+1,rnd(.7,1.2))});
+ tufts(sc,1100,(x,zz)=>Math.abs(x-pathX(zz))>1.5&&Math.abs(zz-PATH.stream)>1&&Math.hypot(x-bx,zz-PATH.boss)>4.3,TH.tuft);
+ particles(sc,anim,TH.fall);
  // far scenery: islets, sailboats, birds, distant ridges, clouds
  [[34,-30,1.1,'light'],[-38,-12,1,'palm'],[-30,34,.9,'palm'],[40,26,.8,'rock']].forEach(([x,zz,s,kind])=>{const g=new T.Group();g.position.set(x,-2.4,zz);g.scale.setScalar(s);sc.add(g);
-  put(g,new T.CylinderGeometry(5,6.5,2.4,14),'#e3d2b4',0,1,0,true);put(g,new T.CylinderGeometry(4.2,5,.6,14),'#9cc27a',0,2.45,0,true);
+  put(g,new T.CylinderGeometry(5,6.5,2.4,14),'#e3d2b4',0,1,0,true);put(g,new T.CylinderGeometry(4.2,5,.6,14),TH.grass,0,2.45,0,true);
   if(kind==='light'){for(let i=0;i<4;i++)cyl(g,.9-i*.1,1-i*.1,1.6,i%2?'#db6a41':'#fff8f4',0,2.7+i*1.6,0,12);put(g,new T.ConeGeometry(.9,.9,12),'#211d1d',0,10.4,0)}
   else if(kind==='palm'){palm(g,-1.2,0,1.1).position.y=2.75;palm(g,1.6,1,.9).position.y=2.75}else put(g,new T.DodecahedronGeometry(1.6,0),'#c5b5a7',0,3,0).scale.y=.7});
  [[30,.05,0],[44,-.035,2.2],[56,.028,4.4]].forEach(([r,sp,ph],i)=>{const g=new T.Group();sc.add(g);box(g,2.4,.5,.9,'#fff8f4',0,0,0);box(g,2.6,.14,1,i%2?'#58a6a6':'#db6a41',0,.5,0);cyl(g,.05,.05,3,'#b48560',0,.5,0,5);
@@ -1120,7 +1269,7 @@ float g=pow(max(sin(vW.x*1.7+uTime*2.1)*sin(vW.z*1.9-uTime*1.6),0.0),26.0);c+=g*
   anim.push(t=>{const a=ph+t*sp;g.position.set(Math.cos(a)*r,hh+Math.sin(t*.8+ph)*.6,Math.sin(a)*r*1.6);g.rotation.y=-a+(sp>0?0:Math.PI);const f=Math.sin(t*9+ph)*.6;wl.rotation.z=f;wr.rotation.z=-f})}
  [[150,26,.45],[190,40,.62]].forEach(([R,H],bi)=>{const pos=[],seg=120;for(let i=0;i<seg;i++){const a0=i/seg*6.283,a1=(i+1)/seg*6.283,hg=a=>H*(.35+.65*Math.abs(Math.sin(a*3+bi)*Math.cos(a*5.3+bi*2)));
    pos.push(Math.cos(a0)*R,-6,Math.sin(a0)*R,Math.cos(a1)*R,-6,Math.sin(a1)*R,Math.cos(a1)*R,hg(a1),Math.sin(a1)*R,Math.cos(a0)*R,-6,Math.sin(a0)*R,Math.cos(a1)*R,hg(a1),Math.sin(a1)*R,Math.cos(a0)*R,hg(a0),Math.sin(a0)*R)}
-  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));sc.add(new T.Mesh(g,new T.MeshBasicMaterial({color:bi?'#b9c7c2':'#a5b6a6',side:T.DoubleSide,fog:false})))});
+  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));sc.add(new T.Mesh(g,new T.MeshBasicMaterial({color:tc(TH.ridge[bi]),side:T.DoubleSide,fog:false})))});
  const cm=new T.MeshStandardMaterial({color:'#ffffff',roughness:.9,transparent:true,opacity:.95,emissive:'#3a3a3a'});
  for(let i=0;i<10;i++){const g=new T.Group();g.position.set(rnd(-70,70),rnd(16,26),rnd(-70,40));sc.add(g);for(let k=0;k<5;k++)put(g,geo('cloud',()=>new T.IcosahedronGeometry(1.6,1)),cm,k*1.4-2.8,rnd(-.3,.5),rnd(-.8,.8),true).scale.set(rnd(.8,1.3),rnd(.55,.8),rnd(.8,1.1));
   const sp=rnd(.6,1.4);anim.push((t,dt)=>{g.position.x+=sp*dt;if(g.position.x>90)g.position.x=-90})}
@@ -1133,16 +1282,16 @@ float g=pow(max(sin(vW.x*1.7+uTime*2.1)*sin(vW.z*1.9-uTime*1.6),0.0),26.0);c+=g*
   return {m,w,list:[w,...more],hp,alive:true,dying:-1}});
  const keeper=makeMonster(zi,true,true);keeper.position.set(pathX(PATH.boss),.3,PATH.boss);sc.add(keeper);
  const chests=addChests(sc,anim,zi),npc=addNpc(sc,anim,zi);
- return {npc,run:{words:0,sents:0,miss:0,best:0,coins:0},zi,ui,sc,sky,ground,hero,mons,chests,clouds:[],foams:[],anim,keeper,target:null,st:{hearts:5},grace:0,lock:false,keys:{},fx:[]};
+ return {npc,run:{words:0,sents:0,miss:0,best:0,coins:0},zi,ui,sc,sky,ground,hero,mons,chests,clouds:[],foams:[],anim,keeper,target:null,st:{hearts:MAXH()},grace:0,lock:false,keys:{},fx:[]};
 }
 function arenaLeft(){return P.mons.filter(x=>x.alive).length}
 function nextMon(){return P.mons.find(x=>x.alive)}
 function arena(zi,fresh){
- const w=getWorld();if(!w){resetSkills();const z=ZONES[zi];return battle(zi,pickWords(z),0,{hearts:5,reward:30})}
+ const w=getWorld();if(!w){resetSkills();const z=ZONES[zi];return battle(zi,pickWords(z),0,{hearts:MAXH(),reward:30})}
  const isNew=fresh||!P||P.zi!==zi;if(isNew){P=buildArena(zi);resetSkills()}
  W.mode='arena';W.unit=P.ui;P.lock=false;P.target=null;P.follow=null;P.snap=isNew;P.grace=isNew?1.5:1.2;if(!W.dragged)W.yaw=0;
  const z=ZONES[zi];
- app.innerHTML=hud(z)+`<div class="hud"><span id="left"></span><span class="hearts">${'♥'.repeat(P.st.hearts)}${'♡'.repeat(5-P.st.hearts)}</span></div>
+ app.innerHTML=hud(z)+`<div class="hud"><span id="left"></span><span class="hearts">${'♥'.repeat(P.st.hearts)}${'♡'.repeat(Math.max(0,MAXH()-P.st.hearts))}</span></div>
  <div class="sea tall" id="sea"><div class="labels" id="labels"></div><div class="tip">Walk up! Tap the ground to move. Pinch to zoom.</div><div class="toast" id="toast"></div>${zoomHtml()}</div>
  <div class="row"><button class="btn" id="fwd">Go forward</button><button class="btn soft" id="hearIntro">Listen to Pip</button><button class="btn soft" id="leave">Leave island</button></div>`;
  document.getElementById('leave').onclick=()=>unitMap(P.ui);
@@ -1322,7 +1471,7 @@ function blanksFor(letters,isFull){
  return shuffle(cand).slice(0,n).sort((a,b)=>a-b)}
 let BT=null;
 function stopTimer(){if(BT){clearInterval(BT);BT=null}}
-function battleTimer(secs,onOut){stopTimer();const el=document.getElementById('timer');if(!el)return{reset(){},stop(){}};let left=secs;
+function battleTimer(secs,onOut){secs+=2*perk('time');stopTimer();const el=document.getElementById('timer');if(!el)return{reset(){},stop(){}};let left=secs;
  const draw=()=>{el.innerHTML=`<i style="width:${Math.max(0,left/secs*100)}%"></i><b>${Math.ceil(Math.max(0,left))}</b>`;el.classList.toggle('low',left<=3)};draw();
  BT=setInterval(()=>{if(!document.body.contains(el)){stopTimer();return}left-=.1;if(left<=0){left=secs;COMBO=0;updCombo();onOut()}draw()},100);
  return{reset(){left=secs;draw()},stop:stopTimer}}
@@ -1341,8 +1490,8 @@ function battle(zi,list,k,st){
  const hpNow=(list.length-k)/list.length;
  let pos=0,miss=0;
  app.innerHTML=hud(z)+`<div class="panel arena">
-  <div class="hud" style="width:100%"><span>${st.label?esc(st.label):`Monster HP ${list.length}`} · Word ${k+1} / ${list.length}</span><span class="hearts" aria-label="hearts ${st.hearts}">${'♥'.repeat(st.hearts)}${'♡'.repeat(5-st.hearts)}</span></div>
-  ${stageHtml(zi,{pic:mode==='listen'?'👂':pic,gloss:mode==='listen'?'Listen!':gloss,size,chest:st.chest,foeHp:hpNow,heroHp:st.hearts/5})}
+  <div class="hud" style="width:100%"><span>${st.label?esc(st.label):`Monster HP ${list.length}`} · Word ${k+1} / ${list.length}</span><span class="hearts" aria-label="hearts ${st.hearts}">${'♥'.repeat(st.hearts)}${'♡'.repeat(Math.max(0,MAXH()-st.hearts))}</span></div>
+  ${stageHtml(zi,{pic:mode==='listen'?'👂':pic,gloss:mode==='listen'?'Listen!':gloss,size,chest:st.chest,foeHp:hpNow,heroHp:st.hearts/MAXH()})}
   <div class="qmode m-${mode}">${mode==='fill'?'✏️ Missing letters':mode==='scramble'?'🔀 Mixed-up letters':'👂 Listen and spell'}</div>
   <div class="slots ${letters.length>6?'long':''}" id="slots">${letters.map((c,i)=>need.includes(i)?`<div class="slot" data-i="${i}"></div>`:`<div class="slot fixed">${c===' '?'&nbsp;':esc(c)}</div>`).join('')}</div>
   ${skillsHtml()}<div class="timer" id="timer" aria-label="time left"></div>
@@ -1352,8 +1501,8 @@ function battle(zi,list,k,st){
  const hint=document.getElementById('hint');
  speak(word);
  document.getElementById('say').onclick=()=>speak(word);
- const setHearts=()=>{app.querySelector('.hearts').textContent='♥'.repeat(st.hearts)+'♡'.repeat(5-st.hearts);const h=document.getElementById('herohp');if(h)h.style.width=(st.hearts/5*100)+'%'};
- const hurt=msg=>{FX.foe();st.hearts=Math.max(0,st.hearts-1);setHearts();hint.textContent=msg;if(st.hearts===0){st.hearts=5;setTimeout(()=>{hint.textContent='Pip filled your hearts again! Try again!';setHearts()},900)}};
+ const setHearts=()=>{app.querySelector('.hearts').textContent='♥'.repeat(st.hearts)+'♡'.repeat(Math.max(0,MAXH()-st.hearts));const h=document.getElementById('herohp');if(h)h.style.width=(st.hearts/MAXH()*100)+'%'};
+ const hurt=msg=>{FX.foe();st.hearts=Math.max(0,st.hearts-1);setHearts();hint.textContent=msg;if(st.hearts===0){st.hearts=MAXH();setTimeout(()=>{hint.textContent='Pip filled your hearts again! Try again!';setHearts()},900)}};
  const tm=battleTimer(10,()=>{hurt(st.chest?"Time's up! The lock shuts. Try again!":"Time's up! The monster attacks!");speak(word)});
  bindSkills(()=>()=>{if(pos>=need.length)return false;const want=letters[need[pos]];const t=[...app.querySelectorAll('.tile:not(.used)')].find(x=>x.dataset.c===want);if(!t)return false;t.click();if(pos<need.length)hint.textContent='Pip: "Hoo! This letter is '+want.toUpperCase()+'!"';return true},st);
  app.querySelectorAll('.tile').forEach(t=>t.onclick=()=>{
@@ -1389,7 +1538,7 @@ function battle(zi,list,k,st){
 }
 const PHASE=[null,{line:"Fog, fog, fog! Now you can't see!",tag:'Phase 2 · Fog'},{line:"Can you hear me? Listen!",tag:'Phase 3 · Listen'}];
 function gate(zi,qi){
- const z=ZONES[zi],g=z.gate[qi],gs=(P&&P.st)||{hearts:5},SL=STORY[zi]||{},ph=PHASE[qi];
+ const z=ZONES[zi],g=z.gate[qi],gs=(P&&P.st)||{hearts:MAXH()},SL=STORY[zi]||{},ph=PHASE[qi];
  sentQ(zi,g,{st:gs,keeper:true,label:'BOSS: '+z.keeper,fog:qi===1,hideQ:qi===2,dots:`<span class="dots">${z.gate.map((x,i)=>`<i class="${i<qi?'on':''}"></i>`).join('')}</span>`,
   foeHp:(z.gate.length-qi)/z.gate.length,say:qi===0&&SL.kOpen?nameIn(SL.kOpen)+' '+g.q:ph?ph.line+' '+g.q:g.q,
   kline:qi===0&&STORY[zi]?`<div class="kline">${esc(z.keeper)}: "${esc(nameIn(STORY[zi].kOpen))}"</div>`:ph?`<div class="kline">${esc(z.keeper)}: "${esc(ph.line)}" <span class="phase">${ph.tag}</span></div>`:'',
@@ -1481,18 +1630,18 @@ const SENT=[
 // the end mark (. ? !) of every sentence is its own card and its own box
 function tokens(ans){const out=[];ans.split(' ').forEach(t=>{const m=t.match(/^(.+?)([.?!]+)$/);if(m){out.push(m[1],m[2])}else out.push(t)});return out}
 const isMark=p=>/^[.?!]+$/.test(p);
-const heartsTxt=st=>'♥'.repeat(st.hearts)+'♡'.repeat(5-st.hearts);
+const heartsTxt=st=>'♥'.repeat(st.hearts)+'♡'.repeat(Math.max(0,MAXH()-st.hearts));
 let MISSN=0,COMBO=0,QN=0;
 // companion skills: Pip's hint (3 per stage) and Henny's egg (once per stage, after Henny joins)
-let SK={pip:3,egg:1,mp:3};const resetSkills=()=>{SK={pip:3,egg:1,mp:3}};
+let SK={pip:3,egg:1,mp:3};const resetSkills=()=>{SK={pip:3+perk('pip'),egg:1,mp:3+perk('mp')}};
 const hasHenny=()=>S.cleared>=8;
 function skillsHtml(){return `<div class="skills" id="skills">${(S.spells||[]).length?`<button class="skill mag" id="skmag" ${SK.mp?'':'disabled'} aria-label="magic">✨ Magic <b>${SK.mp}</b></button>`:''}<button class="skill" id="skpip" ${SK.pip?'':'disabled'} aria-label="Pip's hint">🦉 Pip's hint <b>${SK.pip}</b></button>${hasHenny()?`<button class="skill egg" id="skegg" ${SK.egg?'':'disabled'} aria-label="Henny's egg">🥚 Henny's egg <b>${SK.egg}</b></button>`:''}</div>`}
-function updHearts(st){app.querySelectorAll('.panel .hearts').forEach(h=>h.textContent=heartsTxt(st));const h=document.getElementById('herohp');if(h)h.style.width=(st.hearts/5*100)+'%'}
+function updHearts(st){app.querySelectorAll('.panel .hearts').forEach(h=>h.textContent=heartsTxt(st));const h=document.getElementById('herohp');if(h)h.style.width=(st.hearts/MAXH()*100)+'%'}
 function bindSkills(getHint,st){const pb=document.getElementById('skpip'),eb=document.getElementById('skegg'),mb=document.getElementById('skmag');
  if(mb)mb.onclick=()=>{if(SK.mp>0)magicMenu(getHint,st,mb)};
  if(pb)pb.onclick=()=>{if(SK.pip<=0)return;const f=getHint();if(f&&f()){SK.pip--;pb.querySelector('b').textContent=SK.pip;pb.disabled=!SK.pip;pb.classList.remove('pop');void pb.offsetWidth;pb.classList.add('pop');if(P&&P.run)P.run.pip=(P.run.pip||0)+1}};
- if(eb)eb.onclick=()=>{if(SK.egg<=0)return;if(st.hearts>=5){const h=document.getElementById('hint');if(h)h.textContent='Henny: "Your hearts are full! Save my egg for later."';return}
-  SK.egg--;st.hearts=5;updHearts(st);eb.querySelector('b').textContent=0;eb.disabled=true;const h=document.getElementById('hint');if(h)h.textContent='Henny: "Cluck! Eat my magic egg!" Your hearts are full!';speak('Cluck! Here is a magic egg!')}}
+ if(eb)eb.onclick=()=>{if(SK.egg<=0)return;if(st.hearts>=MAXH()){const h=document.getElementById('hint');if(h)h.textContent='Henny: "Your hearts are full! Save my egg for later."';return}
+  SK.egg--;st.hearts=MAXH();updHearts(st);eb.querySelector('b').textContent=0;eb.disabled=true;const h=document.getElementById('hint');if(h)h.textContent='Henny: "Cluck! Eat my magic egg!" Your hearts are full!';speak('Cluck! Here is a magic egg!')}}
 function updCombo(){const b=document.getElementById('combo');if(!b)return;b.textContent=COMBO>1?'🔥 Combo x'+COMBO:'';b.classList.toggle('on',COMBO>1)}
 function comboHit(clean){if(!clean){COMBO=0;updCombo();return}COMBO++;dly('combo',0,COMBO);if(P&&P.run)P.run.best=Math.max(P.run.best,COMBO);updCombo();
  if(COMBO>=3){const st=document.getElementById('bst');if(st){const c=document.createElement('div');c.className='crit';c.innerHTML='CRITICAL!<small>Combo x'+COMBO+' · +5 bonus coins</small>';st.appendChild(c);st.classList.remove('shake');void st.offsetWidth;st.classList.add('shake');setTimeout(()=>c.remove(),1500)}setTimeout(()=>addCoins(5),1000)}}
@@ -1507,7 +1656,7 @@ function pickSent(zi){const L=SENT[zi]||[];if(!L.length)return ZONES[zi].gate[0]
 function chestFx(){dly('chest');sfx('win');const b=document.querySelector('#foe .fbody');if(b)b.innerHTML='<div class="chestfoe open">💰</div>'}
 
 function sentQ(zi,g,o){
- const z=ZONES[zi],st=o.st||{hearts:5};
+ const z=ZONES[zi],st=o.st||{hearts:MAXH()};
  const ans=nameIn(g.a),parts=tokens(ans),end=parts[parts.length-1];
  const low=parts.map(p=>p.toLowerCase());
  const extra=shuffle(z.words.map(w=>w[0]).filter(w=>!w.includes(' ')&&!low.includes(w)))[0];
@@ -1518,7 +1667,7 @@ function sentQ(zi,g,o){
  let built=[];const q0=MISSN;
  app.innerHTML=hud(z)+`<div class="panel arena">
   <div class="hud" style="width:100%"><span>${esc(o.label||'')}</span>${o.dots||`<span class="hearts">${heartsTxt(st)}</span>`}</div>
-  ${stageHtml(zi,{keeper:o.keeper,chest:o.chest,size:o.size||1,pic:g.pic,gloss:g.hint||'',foeHp:o.foeHp==null?1:o.foeHp,heroHp:st.hearts/5})}
+  ${stageHtml(zi,{keeper:o.keeper,chest:o.chest,size:o.size||1,pic:g.pic,gloss:g.hint||'',foeHp:o.foeHp==null?1:o.foeHp,heroHp:st.hearts/MAXH()})}
   ${o.kline||''}
   <div class="q${o.hideQ?' hidq':''}" id="qtext">${o.hideQ?'👂 Listen to the question!':esc(g.q)}</div>
   <button class="say" id="say">Listen</button>
@@ -1533,8 +1682,8 @@ function sentQ(zi,g,o){
  let fogOn=!!o.fog;const clearFog=()=>{if(!fogOn)return;fogOn=false;const d=document.getElementById('deck');if(d)d.classList.remove('fog');hint.textContent='Whoosh! The fog is gone. Put the cards in order!';tm.reset()};
  if(fogOn)setTimeout(clearFog,7000);
  document.getElementById('say').onclick=()=>{speak(g.q);if(fogOn)setTimeout(clearFog,600)};
- const hurt=msg=>{FX.foe();st.hearts=Math.max(0,st.hearts-1);let refill=false;if(st.hearts===0){st.hearts=5;refill=true}
-  const h=document.getElementById('herohp');if(h)h.style.width=(st.hearts/5*100)+'%';const hs=app.querySelector('.hud .hearts');if(hs)hs.textContent=heartsTxt(st);
+ const hurt=msg=>{FX.foe();st.hearts=Math.max(0,st.hearts-1);let refill=false;if(st.hearts===0){st.hearts=MAXH();refill=true}
+  const h=document.getElementById('herohp');if(h)h.style.width=(st.hearts/MAXH()*100)+'%';const hs=app.querySelector('.hud .hearts');if(hs)hs.textContent=heartsTxt(st);
   hint.textContent=refill?msg+' Pip filled your hearts!':msg};
  const tm=battleTimer(o.fog?17:10,()=>{hurt(o.chest?"Time's up! The lock shuts. Try again!":"Time's up! The monster attacks!");speak(g.q)});
  const render=()=>{ansEl.innerHTML=parts.map((p,i)=>built[i]!==undefined?`<span class="card${isMark(p)?' pc':''}">${esc(deck[built[i]].p)}</span>`:`<span class="aslot${isMark(p)?' pc':''}"></span>`).join('');
@@ -1621,7 +1770,7 @@ function campItems(){
 function campCount(){const done=Math.min(S.cleared,ZONES.length);return(S.miss||[]).filter(m=>+m.split('|')[1]<done).length}
 function camp(){
  resetSkills();const items=campItems();if(!items.length)return map();
- const st={hearts:5};let i=0,got=0;
+ const st={hearts:MAXH()};let i=0,got=0;
  const next=()=>{
   if(i>=items.length)return campEnd(got,items.length);
   const it=items[i++],lab=`Practice Camp · ${i} / ${items.length}`,n0=MISSN;
@@ -1729,7 +1878,7 @@ function daily(){const t=today();S.days=S.days||[];if(!S.days.includes(t)){S.day
   const pool=DAILY.map((x,i)=>i).filter(i=>(DAILY[i].k!=='camp'||S.cleared>0)&&(DAILY[i].k!=='book'||(S.books||[]).length>1));const pick=[];
   while(pick.length<3&&pool.length){h=(h*1103515245+12345)>>>0;pick.push(pool.splice((h>>>8)%pool.length,1)[0])}
   S.daily={date:t,tasks:pick,c:{},claimed:false};save()}return S.daily}
-function dly(k,n,max){try{const d=daily();if(max!=null)d.c[k]=Math.max(d.c[k]||0,max);else d.c[k]=(d.c[k]||0)+(n||1);save()}catch(e){}}
+function dly(k,n,max){try{const d=daily();if(max!=null)d.c[k]=Math.max(d.c[k]||0,max);else d.c[k]=(d.c[k]||0)+(n||1);save()}catch(e){}if(max==null&&XPK[k])gainXP(XPK[k]*(n||1))}
 const dailyDone=d=>d.tasks.every(i=>(d.c[DAILY[i].k]||0)>=DAILY[i].n);
 function dailyHtml(){const d=daily();return `<div class="daily" id="daily"><h3>📅 Today's Quests</h3>${d.tasks.map(i=>{const q=DAILY[i],v=Math.min(d.c[q.k]||0,q.n),ok=v>=q.n;return `<div class="dtask${ok?' done':''}"><span class="di">${q.i}</span><span class="dt">${esc(q.t)}<small>${esc(q.zh)}</small></span><span class="dp">${ok?'✅':v+' / '+q.n}</span></div>`}).join('')}
  ${d.claimed?'<small>Great job! Come back tomorrow for new quests.</small>':dailyDone(d)?'<button class="btn" id="dclaim">🎁 Open the daily chest! +60 coins</button>':'<small>Finish all three to open the daily chest!</small>'}</div>`}
@@ -1758,9 +1907,9 @@ function games(back){
   <div class="row"><button class="btn soft" id="gback">Back to map</button></div></div>`;
  document.getElementById('gfish').onclick=()=>fishing(()=>games(back));document.getElementById('grace').onclick=()=>race(()=>games(back));document.getElementById('gduel').onclick=()=>duelSetup(()=>games(back));document.getElementById('gback').onclick=back||map}
 function gameEnd(title,score,total,again,back){const c=score*2;if(c)addCoins(c);
- app.innerHTML=hud()+`<div class="panel" style="text-align:center"><h2 style="font-size:1.6rem">${title}</h2><p style="font-size:2.4rem;margin:10px 0">⭐ ${score}${total?' / '+total:''}</p><p>+${c} coins</p>
+ app.innerHTML=hud()+`<div class="panel" style="text-align:center"><h2 style="font-size:1.6rem">${title}</h2><p style="font-size:2.4rem;margin:10px 0">⭐ ${score}${total?' / '+total:''}</p><p>+${c} coins · +${score*3} XP</p>
   <div class="row"><button class="btn" id="gagain">Play again</button><button class="btn soft" id="gb">Back</button></div></div>`;
- speak(score?'Great job!':'Nice try!');document.getElementById('gagain').onclick=again;document.getElementById('gb').onclick=back}
+ speak(score?'Great job!':'Nice try!');if(score)gainXP(score*3);document.getElementById('gagain').onclick=again;document.getElementById('gb').onclick=back}
 function fishing(back){const pool=gameWords(false);let round=0,score=0;const N=8;
  const next=()=>{if(round>=N)return gameEnd('🎣 Word Fishing',score,N,()=>fishing(back),back);round++;
   const ans=pk(pool),opts=shuffle([ans,...shuffle(pool.filter(w=>w[0]!==ans[0])).slice(0,3)]);let tries=0;
@@ -1837,7 +1986,7 @@ function report(back){const N=ZONES.length,done=Math.min(S.cleared,N),miss=S.mis
  const tw=top('w'),ts=top('s');
  const unseen=[];for(let zi=0;zi<done;zi++)ZONES[zi].words.forEach(w=>{if(!S.dex.includes(w[0])&&!unseen.includes(w[0]))unseen.push(w[0])});
  app.innerHTML=hud()+`<div class="panel rep"><h2 style="font-size:1.5rem">📊 老師報表 · ${esc(S.name)}</h2><p class="muted">${new Date().toLocaleDateString('zh-TW')} · ${ACC?'雲端帳號：'+esc(ACC.user):'資料只存在這台裝置'}</p>
-  <div class="kpi"><div>完成關卡<b>${done} / ${N}</b></div><div>星星<b>${stars} / ${N*3}</b></div><div>學會單字<b>${S.dex.length} / ${dexTotal()}</b></div><div>練過句子<b>${seen.length} / ${SENT.reduce((a,l)=>a+l.length,0)}</b></div><div>練習營待複習<b>${campCount()}</b></div><div>遊玩天數<b>${(S.days||[]).length}</b></div><div>日記頁數<b>${(S.diary||[]).length} / ${DIARY.length}</b></div><div>朋友<b>💛 ${friendN()}</b></div></div>
+  <div class="kpi"><div>等級<b>Lv ${LV()} · ${S.xp||0} XP</b></div><div>完成關卡<b>${done} / ${N}</b></div><div>星星<b>${stars} / ${N*3}</b></div><div>學會單字<b>${S.dex.length} / ${dexTotal()}</b></div><div>練過句子<b>${seen.length} / ${SENT.reduce((a,l)=>a+l.length,0)}</b></div><div>練習營待複習<b>${campCount()}</b></div><div>遊玩天數<b>${(S.days||[]).length}</b></div><div>日記頁數<b>${(S.diary||[]).length} / ${DIARY.length}</b></div><div>朋友<b>💛 ${friendN()}</b></div></div>
   <h3>各關卡進度</h3><table><tr><th>關卡</th><th>星星</th><th>單字</th><th>句子（出現過）</th></tr>${rows}</table>
   <h3>最常拼錯的單字</h3>${tw.length?`<table><tr><th>單字</th><th>關卡</th><th>錯誤次數</th><th>狀態</th></tr>${tw.map(mrow).join('')}</table>`:'<p class="muted">還沒有紀錄。</p>'}
   <h3>最常排錯的句子</h3>${ts.length?`<table><tr><th>句子</th><th>關卡</th><th>錯誤次數</th><th>狀態</th></tr>${ts.map(mrow).join('')}</table>`:'<p class="muted">還沒有紀錄。</p>'}
@@ -1925,7 +2074,7 @@ function cast(x,getHint,st){const t=spellType(x[0]),name=x[0][0].toUpperCase()+x
  const nm=document.createElement('div');nm.className='mname';nm.textContent=x[1]+' '+name;document.body.appendChild(nm);setTimeout(()=>nm.remove(),1300);
  sfx('crit');speak(name);if(P&&P.run)P.run.magic=(P.run.magic||0)+1;
  const hint=document.getElementById('hint');
- if(t==='heal'){st.hearts=Math.min(5,st.hearts+2);updHearts(st);if(hint)hint.textContent='Yum! '+x[0]+' magic gives you 2 hearts!'}
+ if(t==='heal'){st.hearts=Math.min(MAXH(),st.hearts+2);updHearts(st);if(hint)hint.textContent='Yum! '+x[0]+' magic gives you 2 hearts!'}
  else if(t==='ice'){stopTimer();const tm=document.getElementById('timer');if(tm){tm.innerHTML='<i style="width:100%;background:#9CC8F0"></i><b>❄️</b>'}if(hint)hint.textContent='Freeze! The clock stops. Take your time.'}
  else{const run=()=>{const f=getHint();let n=0;while(f&&n<40&&f())n++};setTimeout(()=>{run();const ok=document.getElementById('ok');if(ok&&document.querySelector('#deck .card:not(.used)')===null||ok&&document.querySelectorAll('#ans .aslot').length===0){ok.click();setTimeout(run,400)}},500);if(hint)hint.textContent=x[0]+' magic! A big hit!'}}
 function wordBook(back){S.wb=S.wb||{};
@@ -1941,11 +2090,11 @@ function wbList(back){
  bindSay();document.getElementById('wlback').onclick=back}
 function wbPlay(li,back,o){const L=o?{t:o.t}:WB[li],seen=S.wbSeen=S.wbSeen||[],withSent=!o||o.sent,retried=new Set(),missOf={};resetSkills();
  const pool=o?null:shuffle(L.items),list=o?shuffle(o.list):[...pool.filter(x=>!seen.includes(x[0])),...pool.filter(x=>seen.includes(x[0]))].slice(0,7);
- const st={hearts:5};let k=0,miss=0,QN0=MISSN,bad=false;
+ const st={hearts:MAXH()};let k=0,miss=0,QN0=MISSN,bad=false;
  const missW=w=>{miss++;bad=true;const b=w.replace(' (sentence)','');missOf[b]=(missOf[b]||0)+1;S.wbMiss=S.wbMiss||{};S.wbMiss[w]=(S.wbMiss[w]||0)+1;COMBO=0;updCombo();save()};
- const hurt=(hint,msg)=>{FX.foe();st.hearts=Math.max(0,st.hearts-1);if(!st.hearts){st.hearts=5;msg+=' Pip filled your hearts!'}updHearts(st);hint.textContent=msg};
+ const hurt=(hint,msg)=>{FX.foe();st.hearts=Math.max(0,st.hearts-1);if(!st.hearts){st.hearts=MAXH();msg+=' Pip filled your hearts!'}updHearts(st);hint.textContent=msg};
  const frame=(x,step,body,hintTxt)=>{app.innerHTML=hud(o?{zh:o.t}:WBZ)+`<div class="panel arena"><div class="hud" style="width:100%"><span>${o?'🎯':'📒'} ${L.t} · Word ${k+1} / ${list.length}${o?` · #${wbNum(x[0])}`:''} · ${step}</span><span class="hearts">${heartsTxt(st)}</span></div>
-   ${stageHtml(o?98:99,{pic:x[1],gloss:x[2],size:2,foeHp:(list.length-k)/list.length,heroHp:st.hearts/5})}${body}${skillsHtml()}<div class="hint" id="hint">${hintTxt}</div></div>`;return document.getElementById('hint')};
+   ${stageHtml(o?98:99,{pic:x[1],gloss:x[2],size:2,foeHp:(list.length-k)/list.length,heroHp:st.hearts/MAXH()})}${body}${skillsHtml()}<div class="hint" id="hint">${hintTxt}</div></div>`;return document.getElementById('hint')};
  const spellStep=()=>{const x=list[k],word=x[0],letters=[...word],need=blanksFor(letters,!!x[4]||!!(o&&o.full));bad=false;
   let pool2=need.map(i=>letters[i]);const ex=shuffle([...CVC_DISTRACT].filter(c=>!pool2.includes(c)));while(pool2.length<Math.max(6,need.length+2))pool2.push(ex.pop());pool2=shuffle(pool2);let pos=0,wrong=0;
   const hint=frame(x,'Spell',`<div class="slots ${letters.length>6?'long':''}" id="slots">${letters.map((c,i)=>need.includes(i)?`<div class="slot" data-i="${i}"></div>`:`<div class="slot fixed">${c===' '?'&nbsp;':esc(c)}</div>`).join('')}</div>
@@ -2141,12 +2290,15 @@ function shelf(back){
 }
 
 // ---------- background music: map/island theme and battle theme ----------
-const BGM={want:null,cur:null,els:{},vol:{map:.3,battle:.34},on:true,duckT:0};
+const BGM={want:null,cur:null,els:{},vol:{map:.3,battle:.34,boss:.34,island2:.3},on:true,duckT:0};
+// each island can have its own theme song (audio/island<N>.mp3); islands without one use the map song
+const ISLAND_SONG={1:'island2'};
+const islandSong=ui=>ISLAND_SONG[ui]||'map';
 try{BGM.on=localStorage.getItem('rq-music')!=='off'}catch(e){}
 function bgmEl(n){return BGM.els[n]||(BGM.els[n]=Object.assign(new Audio('audio/'+n+'.mp3'),{loop:true,preload:'auto',volume:BGM.vol[n]}))}
 function bgm(n){BGM.want=n;if(!BGM.on)return;
  for(const k in BGM.els)if(k!==n)BGM.els[k].pause();
- const a=bgmEl(n);if(BGM.cur!==n&&n==='battle')a.currentTime=0;BGM.cur=n;a.play().catch(()=>{})}
+ const a=bgmEl(n);if(BGM.cur!==n&&(n==='battle'||n==='boss'))a.currentTime=0;BGM.cur=n;a.play().catch(()=>{})}
 function bgmToggle(){BGM.on=!BGM.on;try{localStorage.setItem('rq-music',BGM.on?'on':'off')}catch(e){}
  if(BGM.on){BGM.cur=null;bgm(BGM.want||'map')}else for(const k in BGM.els)BGM.els[k].pause();
  document.querySelectorAll('.mute').forEach(b=>{b.textContent=BGM.on?'♫ Music on':'♫ Music off';b.setAttribute('aria-pressed',String(!BGM.on))})}
@@ -2154,9 +2306,9 @@ function bgmDuck(ms){for(const k in BGM.els)BGM.els[k].volume=BGM.vol[k]*.3;clea
 // browsers only allow sound after the first tap
 addEventListener('pointerdown',function first(){if(BGM.on&&BGM.want){const a=bgmEl(BGM.want);if(a.paused)a.play().catch(()=>{})}},{capture:true});
 function muteHtml(){return `<button class="mute" onclick="bgmToggle()" aria-pressed="${!BGM.on}">${BGM.on?'♫ Music on':'♫ Music off'}</button><button class="sfxb" onclick="sfxToggle()" aria-label="sound effects">${SFX.on?'🔊 Sound':'🔈 Sound off'}</button>`}
-{const wrap=(fn,m)=>function(){bgm(m);return fn.apply(this,arguments)};
- battle=wrap(battle,'battle');gate=wrap(gate,'battle');sentQ=wrap(sentQ,'battle');campEnd=wrap(campEnd,'map');
- title=wrap(title,'map');map=wrap(map,'map');unitMap=wrap(unitMap,'map');mapGrid=wrap(mapGrid,'map');unitGrid=wrap(unitGrid,'map');story=wrap(story,'map');arena=wrap(arena,'map');clear=wrap(clear,'map');
+{const wrap=(fn,m)=>function(){bgm(typeof m==='function'?m.apply(this,arguments):m);return fn.apply(this,arguments)};const byZone=zi=>islandSong(unitOf(zi));
+ battle=wrap(battle,'battle');gate=wrap(gate,'boss');sentQ=wrap(sentQ,(zi,g,o)=>o&&o.keeper?'boss':'battle');campEnd=wrap(campEnd,'map');
+ title=wrap(title,'map');map=wrap(map,'map');unitMap=wrap(unitMap,islandSong);mapGrid=wrap(mapGrid,'map');unitGrid=wrap(unitGrid,islandSong);story=wrap(story,byZone);arena=wrap(arena,byZone);clear=wrap(clear,byZone);
  const sp=speak;speak=function(t){bgmDuck(String(t).length>12?3200:1400);return sp.apply(this,arguments)}}
 
 title();cloudStartSync();
