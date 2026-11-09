@@ -490,7 +490,7 @@ try{const s=JSON.parse(localStorage.getItem('rq-save')||'null');if(s&&typeof s.c
 if(!S.diary)S.diary=[...Array(Math.min(S.cleared||0,8)).keys()];
 // ---- Cloud save: log in with a username + password so the same progress follows the child to any device ----
 // Fill in from Supabase > Project Settings > API (Project URL + anon/publishable key). Leave blank to keep device-only saves.
-const CLOUD={url:'',key:''};
+const CLOUD={url:'https://vpvftdwnkxocfqfunmrt.supabase.co',key:'sb_publishable_18FlVXd-olquZKSI1G2bCw_wJQAEn_t'};
 const cloudOn=()=>!!(CLOUD.url&&CLOUD.key);
 let ACC=null;try{ACC=JSON.parse(localStorage.getItem('rq-account')||'null')}catch(e){}
 const accSave=()=>{try{ACC?localStorage.setItem('rq-account',JSON.stringify(ACC)):localStorage.removeItem('rq-account')}catch(e){}};
@@ -516,7 +516,7 @@ async function cloudPush(){
  if(!ACC||!cloudOn()||SYNC.busy)return;SYNC.busy=true;cloudMark('…');
  try{const r=await fetch(sbBase()+'/rest/v1/saves?on_conflict=user_id',{method:'POST',headers:{...await restHead(),Prefer:'resolution=merge-duplicates,return=minimal'},
    body:JSON.stringify({user_id:ACC.uid,username:ACC.user,data:S,updated_at:new Date(S.t||Date.now()).toISOString()})});
-  if(!r.ok)throw new Error('NETWORK');SYNC.dirty=false;try{localStorage.removeItem('rq-dirty')}catch(e){}cloudMark('✓')}
+  SYNC.err=r.ok?'':r.status;if(!r.ok)throw new Error('NETWORK');SYNC.dirty=false;try{localStorage.removeItem('rq-dirty')}catch(e){}cloudMark('✓')}
  catch(e){cloudMark('⚠')}finally{SYNC.busy=false}}
 function cloudMark(s){SYNC.state=s;document.querySelectorAll('.cloudst').forEach(e=>e.textContent=s)}
 const fresh=()=>({name:'',cleared:0,dex:[]});
@@ -551,7 +551,7 @@ function accountScreen(back){
   <button class="btn" id="async">Save now</button> <button class="btn soft" id="aout">Log out</button> <button class="btn soft" id="aback">Back</button>
   <p class="teacher" id="amsg"></p></div>`;
   document.getElementById('aback').onclick=back;
-  document.getElementById('async').onclick=async()=>{await cloudPush();document.getElementById('amsg').textContent=SYNC.dirty?'還沒上傳成功，請確認網路。':'已上傳到雲端 ✓'};
+  document.getElementById('async').onclick=async()=>{await cloudPush();document.getElementById('amsg').textContent=!SYNC.dirty?'已上傳到雲端 ✓':SYNC.err===404?'雲端找不到存檔表：請在 Supabase 的 SQL Editor 執行 CLOUD-SAVE.md 裡的 SQL。':SYNC.err?'雲端拒絕存檔（錯誤 '+SYNC.err+'），請確認 SQL 的安全規則已建立。':'還沒上傳成功，請確認網路。'};
   document.getElementById('aout').onclick=async()=>{const m=document.getElementById('amsg');if(SYNC.dirty){await cloudPush();if(SYNC.dirty&&!confirm('現在離線，最新進度還沒上傳。仍要登出嗎？（這台裝置上的進度會清除）'))return}
    ACC=null;accSave();adopt(fresh());SYNC.dirty=false;try{localStorage.removeItem('rq-dirty')}catch(e){}cloudMark('');title()};return}
  app.innerHTML=`<div class="panel title acct"><h1>☁️ Save to the Cloud</h1>
