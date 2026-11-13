@@ -10,8 +10,10 @@ Conventions the game relies on (see MODELS in index.html):
 - Meshes named face_grumpy / face_happy are toggled by the game.
 - Animations (NLA tracks): idle, walk, laugh, hurt, color_up.
 """
-import bpy, bmesh, math, random, sys
+import bpy, bmesh, math, random, sys, os
 from mathutils import Vector
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import finish as FIN
 
 out = sys.argv[-1] if sys.argv[-1].endswith('.glb') else 'm11-dust.glb'
 random.seed(11)
@@ -221,6 +223,12 @@ for b in pb:
 
 tris = sum(len(o.data.polygons) for o in scn.objects if o.type == 'MESH')
 print('faces', tris)
+bpy.context.view_layer.update()
+meshes = [o for o in scn.objects if o.type == 'MESH']
+FIN.finish(meshes, M, 1.0, {'fluff': ('fur', .8), 'fluff_dark': ('fur', .7), 'feet': ('felt', .4)},
+           {'fluff': .95, 'fluff_dark': .95, 'eye': .12, 'white': .18, 'mouth': .45},
+           occluders=[o for o in meshes if not o.name.startswith('face_')])
 bpy.ops.export_scene.gltf(filepath=out, export_format='GLB', export_animation_mode='NLA_TRACKS',
-                          export_apply=True, export_yup=True, export_def_bones=False)
+                          export_apply=True, export_yup=True, export_def_bones=False, **FIN.GLTF_KW)
+FIN.slim_glb(out)
 print('wrote', out)
