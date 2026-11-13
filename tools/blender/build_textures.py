@@ -3,8 +3,8 @@
     python3 tools/blender/build_textures.py img/tex/
 
 Writes small JPEGs the game multiplies with its theme colours, so every island keeps its own
-palette: <kind>.jpg is a grey detail map (mean about 0.9, white = the plain theme colour) and
-<kind>_n.jpg a tangent-space normal map. Kinds: grass, path, rock, wood, bark, sand.
+palette: <kind>.jpg is a grey detail map (mean about 0.9, white = the plain theme colour). No normal
+maps for the scene: derivative normal mapping shimmers on phone GPUs. Kinds: grass, path, rock, wood, bark, sand.
 All are seamless (built in the frequency domain / with wrapped distances), 256 px, ~10-25 KB.
 """
 import bpy, os, sys
@@ -100,4 +100,3 @@ if __name__ == '__main__':
     for k in ('grass', 'path', 'sand', 'rock', 'wood', 'bark'):
         alb, nrm = build(k)
         save(k, np.repeat(alb[..., None], 3, -1), out)
-        save(k + '_n', nrm, out)

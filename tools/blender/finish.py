@@ -206,9 +206,14 @@ def finish(objs, mats, size, details, rough=None, ao=.75, skip_ao=('white',), oc
         if o.type == 'MESH' and any(m and 'detail' in m for m in o.data.materials):
             box_uv(o, tile)
     bake_ao([o for o in objs if o.type == 'MESH'], size * .22, strength=ao, skip=set(skip_ao), occluders=occluders)
+    for o in objs:  # triangles only, so the exporter can write tangents for every textured part (n-gon caps block it)
+        if o.type != 'MESH': continue
+        bm = bmesh.new(); bm.from_mesh(o.data)
+        bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 3])
+        bm.to_mesh(o.data); bm.free()
 
 
-GLTF_KW = dict(export_vertex_color='ACTIVE', export_image_format='JPEG', export_jpeg_quality=85)
+GLTF_KW = dict(export_tangents=True, export_vertex_color='ACTIVE', export_image_format='JPEG', export_jpeg_quality=85)
 
 
 # ---------------------------------------------------------------- GLB slimming
@@ -226,8 +231,8 @@ def slim_glb(path):
     for me in j['meshes']:
         for p in me['primitives']:
             at = p['attributes']
-            if 'TEXCOORD_0' in at and p.get('material') not in textured:
-                del at['TEXCOORD_0']
+            if p.get('material') not in textured:
+                at.pop('TEXCOORD_0', None); at.pop('TANGENT', None)
             c = at.get('COLOR_0')
             if c is not None and acc[c]['componentType'] in (5126, 5123) and c not in data:
                 a = acc[c]; bv = bvs[a['bufferView']]; n = a['count']; k = 4 if a['type'] == 'VEC4' else 3
