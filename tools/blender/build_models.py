@@ -19,8 +19,6 @@ Inside this file every position is written Y-up like the game: (x, up, front).
 import bpy, bmesh, math, random, sys, os
 from mathutils import Vector, Matrix
 from mathutils.bvhtree import BVHTree
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import finish as FIN
 
 C = bpy.context
 TAU = math.pi * 2
@@ -42,7 +40,6 @@ class Model:
         C.scene.render.fps = 30
         self.name = name; self.mats = {}; self.parts = []  # (obj, bone)
         self.bones = []
-        self.fin = None  # finishing pass: {'details': {mat: (kind, strength)}, 'rough': {mat: r}}
 
     # ---------- materials ----------
     def m(self, name, hexc=None, rough=.8):
@@ -256,22 +253,10 @@ class Model:
 
     def export(self, path):
         for b in self.r.pose.bones: b.location = (0, 0, 0); b.rotation_euler = (0, 0, 0); b.scale = (1, 1, 1)
-        C.view_layer.update()
-        meshes = [o for o in C.scene.objects if o.type == 'MESH']
-        n = sum(len(o.data.polygons) for o in meshes)
-        if self.fin is not None:
-            size = max((o.matrix_world @ Vector(c)).z for o in meshes for c in o.bound_box)
-            rough = dict(FACE_ROUGH); rough.update(self.fin.get('rough', {}))
-            FIN.finish(meshes, self.mats, size, self.fin.get('details', {}), rough, self.fin.get('ao', .75), tiles=self.fin.get('tiles', 6),
-                       occluders=[o for o in meshes if not o.name.startswith('face_')])
+        n = sum(len(o.data.polygons) for o in C.scene.objects if o.type == 'MESH')
         bpy.ops.export_scene.gltf(filepath=path, export_format='GLB', export_animation_mode='NLA_TRACKS',
-                                  export_apply=True, export_yup=True, export_def_bones=False, **FIN.GLTF_KW)
-        FIN.slim_glb(path)
+                                  export_apply=True, export_yup=True, export_def_bones=False)
         print('%-14s %5d faces %6.1f KB' % (self.name, n, os.path.getsize(path) / 1024))
-
-
-# glossy, wet-looking eyes and mouths on every model
-FACE_ROUGH = {'eye': .12, 'white': .18, 'iris': .15, 'mouth': .45, 'tongue': .4, 'shine': .1, 'drop': .05}
 
 
 # ======================= monsters =======================
@@ -333,7 +318,6 @@ def m12_sock():
     M.faces(fz, 0, .68, 1., tongue=True, sleepy=True)
     M.rig(MON_BONES(1.0))
     monster_clips(M, arms=0)
-    M.fin = {'details': {'red': ('knit', .8), 'cream': ('knit', .8), 'red_dark': ('knit', .6)}, 'rough': {'red': .95, 'cream': .95}}
     return M
 
 
@@ -358,7 +342,6 @@ def m13_cushion():
     M.faces(fz, 0, .72, 1.05, spread=.17)
     M.rig(MON_BONES(1.0, (.3, .45)))
     monster_clips(M)
-    M.fin = {'details': {'yellow': ('cloth', .6), 'yellow_dark': ('cloth', .5)}, 'rough': {'yellow': .9}}
     return M
 
 
@@ -380,7 +363,6 @@ def m14_balloon():
            ('arm_L', (-.4, 1.02, 0), 'body'), ('arm_R', (.4, 1.02, 0), 'body'),
            ('foot_L', (-.1, .1, 0), 'root'), ('foot_R', (.1, .1, 0), 'root')])
     monster_clips(M, float_=True, arms=25)
-    M.fin = {'details': {'blue': ('rubber', .15), 'blue_dark': ('rubber', .15)}, 'rough': {'blue': .22, 'blue_dark': .3}}
     return M
 
 
@@ -404,7 +386,6 @@ def m21_hay():
     M.faces(fz, 0, .58, 1.0)
     M.rig(MON_BONES(.9))
     monster_clips(M, arms=0)
-    M.fin = {'details': {'hay': ('straw', .9), 'hay_dark': ('straw', .8), 'hay_light': ('straw', .6)}, 'rough': {'hay': .9}}
     return M
 
 
@@ -427,7 +408,6 @@ def m22_sheep():
     M.faces(fz, 0, .58, .85, spread=.12)
     M.rig(MON_BONES(.9))
     monster_clips(M, arms=0)
-    M.fin = {'details': {'wool': ('wool', .6), 'face': ('skin', .25), 'horn': ('leather', .7)}, 'rough': {'wool': .98, 'horn': .45}}
     return M
 
 
@@ -449,7 +429,6 @@ def m23_mud():
     M.faces(fz, 0, .48, .95)
     M.rig(MON_BONES(.86))
     monster_clips(M, arms=0)
-    M.fin = {'details': {'mud': ('mud', .7), 'mud_dark': ('mud', .6), 'leaf': ('skin', .3)}, 'rough': {'mud': .32, 'mud_dark': .3, 'leaf': .5}}
     return M
 
 
@@ -465,7 +444,6 @@ def m24_fruit():
     M.faces(fz, 0, .42, .95, spread=.14)
     M.rig(MON_BONES(1.02))
     monster_clips(M, arms=0)
-    M.fin = {'details': {'pear': ('skin', .35), 'pear_dark': ('skin', .3), 'stem': ('straw', .5)}, 'rough': {'pear': .42, 'leaf': .5}}
     return M
 
 
@@ -624,11 +602,6 @@ def hero(kind):
     tongue = [(math.cos(math.pi + math.pi * i / 10) * .032, math.sin(math.pi + math.pi * i / 10) * .018 - .027) for i in range(11)]
     M.flat('tongue', tongue, .014, (0, my, fz(0, my - .025) + .003), M.m('tongue', '#EE7480', .6), 'head')
     M.ball('nose', .012, (0, ey - .045, fz(0, ey - .045) - .002), M.m('nose', '#F0B394', .7), 'head')
-    M.fin = {'details': {'tunic': ('cloth', .55), 'shorts': ('cloth', .5), 'shirt': ('cloth', .45), 'cape': ('cloth', .5),
-                         'cape_dark': ('cloth', .5), 'cap': ('felt', .6), 'cap_dark': ('felt', .6), 'boot': ('leather', .6),
-                         'boot_dark': ('leather', .6), 'belt': ('leather', .6), 'pouch': ('leather', .6), 'hair': ('hair', .55),
-                         'hair_light': ('hair', .55), 'skin': ('skin', .12), 'wood': ('straw', .4), 'wood_dark': ('straw', .4)},
-             'tiles': 15, 'rough': {'skin': .6, 'gold': .28, 'tunic': .9, 'cape': .88, 'cap': .95, 'boot': .5, 'boot_dark': .55, 'hair': .55}}
     M.rig(HERO_BONES)
     hero_clips(M)
     return M
@@ -676,7 +649,6 @@ def pip():
         M.ball('glint', .025, (x + .03, .66, fz(x, .62) + .04), W, 'body', (1, 1, .4))
         M.ball('cheek', .05, (sx * .27, .5, fz(sx * .27, .5) - .01), M.m('cheek', '#FF9C9C', .9), 'body', (1, .6, .3))
     M.lathe('beak', [(.0, 0), (.06, 0), (0, -.09)], y, 'body', 8, (0, .53, fz(0, .53) + .02), 'z')
-    M.fin = {'details': {'feather': ('fur', .55), 'wing': ('fur', .55), 'belly': ('fur', .4)}, 'rough': {'feather': .9, 'beak': .4}}
     M.rig([('root', (0, 0, 0), None), ('body', (0, .1, 0), 'root'), ('arm_L', (-.36, .62, 0), 'body'), ('arm_R', (.36, .62, 0), 'body')])
     M.clip('idle', [(1, {'root.loc': Z, 'arm_L.rot': (0, 0, 0), 'arm_R.rot': (0, 0, 0)}),
                     (20, {'root.loc': (0, .06, 0), 'arm_L.rot': (0, 0, -15), 'arm_R.rot': (0, 0, 15)}),
